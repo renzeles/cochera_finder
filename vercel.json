@@ -1,7 +1,11 @@
 {
-  "outputDirectory": "output",
-  "buildCommand": null,
-  "rewrites": [
-    { "source": "/", "destination": "/resultados.html" }
+  "builds": [
+    {
+      "src": "output/resultados.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/", "dest": "/output/resultados.html" }
   ]
 }
