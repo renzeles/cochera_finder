@@ -1,0 +1,2629 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cocheras en Alquiler — Las Cañitas / Belgrano</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #1a1a2e;
+    --accent: #e94560;
+    --green: #00b894;
+    --orange: #fdcb6e;
+    --bg: #f0f2f5;
+    --card: #ffffff;
+    --text: #2d3436;
+    --muted: #636e72;
+    --border: #e0e0e0;
+  }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+
+  /* ── HEADER ── */
+  .header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+    padding: 40px 48px 32px;
+    color: #fff;
+  }
+  .header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; }
+  .header h1 span { color: #e94560; }
+  .header p { margin-top: 6px; color: rgba(255,255,255,.6); font-size: .9rem; }
+  .header-ref { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+    background: rgba(255,255,255,.1); border-radius: 20px; padding: 5px 14px;
+    font-size: .82rem; color: rgba(255,255,255,.85); }
+  .header-ref svg { width: 14px; height: 14px; fill: #e94560; }
+
+  /* ── STATS ── */
+  .stats { display: flex; gap: 16px; padding: 24px 48px; flex-wrap: wrap; }
+  .stat {
+    background: var(--card); border-radius: 16px; padding: 20px 28px;
+    flex: 1; min-width: 160px; box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  }
+  .stat-num { font-size: 2rem; font-weight: 700; line-height: 1; }
+  .stat-label { font-size: .78rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+  .stat.green .stat-num { color: var(--green); }
+  .stat.red .stat-num { color: var(--accent); }
+  .stat.gold .stat-num { color: #f39c12; }
+
+  /* ── MAP ── */
+  .map-wrap { padding: 0 48px 24px; }
+  #map { height: 380px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,.1); }
+
+  /* ── FILTERS ── */
+  .filters {
+    margin: 0 48px 20px; background: var(--card);
+    border-radius: 16px; padding: 20px 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-end;
+  }
+  .filter-group { display: flex; flex-direction: column; gap: 6px; }
+  .filter-group label { font-size: .75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .filter-group input[type="number"] {
+    border: 1.5px solid var(--border); border-radius: 10px; padding: 8px 12px;
+    font-size: .9rem; font-family: inherit; width: 150px;
+    transition: border-color .2s;
+  }
+  .filter-group input[type="number"]:focus { outline: none; border-color: var(--accent); }
+  .toggle-group { display: flex; gap: 10px; }
+  .toggle-btn {
+    border: 1.5px solid var(--border); background: #fff; border-radius: 10px;
+    padding: 8px 16px; font-size: .83rem; font-weight: 500; cursor: pointer;
+    transition: all .2s; font-family: inherit; color: var(--text);
+  }
+  .toggle-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .reset-btn {
+    border: none; background: none; color: var(--muted); font-size: .83rem;
+    cursor: pointer; padding: 8px 4px; font-family: inherit; text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .reset-btn:hover { color: var(--accent); }
+
+  /* ── TABLE WRAP ── */
+  .table-wrap { margin: 0 48px 48px; }
+  .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .result-count { font-size: .85rem; color: var(--muted); }
+  .result-count strong { color: var(--text); }
+
+  /* ── TABLE ── */
+  .prop-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+  .prop-table thead th {
+    padding: 0 16px 8px; text-align: left;
+    font-size: .72rem; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .6px;
+    cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  .prop-table thead th:hover { color: var(--text); }
+  .prop-table thead th .sort-icon { margin-left: 4px; opacity: .4; }
+  .prop-table thead th.sort-asc .sort-icon::after { content: ' ▲'; }
+  .prop-table thead th.sort-desc .sort-icon::after { content: ' ▼'; }
+
+  .prop-row {
+    background: var(--card);
+    box-shadow: 0 1px 6px rgba(0,0,0,.05);
+    border-radius: 14px;
+    transition: box-shadow .2s, transform .15s;
+    cursor: pointer;
+  }
+  .prop-row:hover { box-shadow: 0 4px 20px rgba(0,0,0,.12); transform: translateY(-1px); }
+  .prop-row td { padding: 16px; vertical-align: middle; }
+  .prop-row td:first-child { border-radius: 14px 0 0 14px; }
+  .prop-row td:last-child { border-radius: 0 14px 14px 0; }
+
+  /* Portal badge */
+  .badge-portal {
+    display: inline-block; padding: 3px 10px; border-radius: 8px;
+    font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .4px;
+  }
+  .badge-zonaprop   { background: #e3f0ff; color: #1565c0; }
+  .badge-argenprop  { background: #fff3e0; color: #e65100; }
+  .badge-mercadolibre { background: #fffde7; color: #f57f17; }
+  .badge-properati  { background: #f3e5f5; color: #6a1b9a; }
+
+  /* Title cell */
+  .prop-title a {
+    color: var(--text); text-decoration: none; font-weight: 500;
+    font-size: .9rem; line-height: 1.4; display: block;
+    transition: color .15s;
+  }
+  .prop-title a:hover { color: var(--accent); }
+  .prop-addr { color: var(--muted); font-size: .78rem; margin-top: 3px; }
+
+  /* Price cell */
+  .prop-price { font-size: 1.05rem; font-weight: 700; color: var(--green); white-space: nowrap; }
+  .prop-price.usd { color: #0984e3; }
+
+  /* Distance badge */
+  .dist-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: 20px; font-size: .8rem; font-weight: 600;
+    white-space: nowrap;
+  }
+  .dist-pill.near { background: #d4edda; color: #155724; }
+  .dist-pill.mid  { background: #fff3cd; color: #856404; }
+  .dist-pill.far  { background: #f8d7da; color: #721c24; }
+  .dist-pill.unknown { background: #e9ecef; color: #6c757d; }
+
+  /* SUV badge */
+  .badge-suv {
+    display: inline-block; padding: 3px 8px; border-radius: 6px;
+    background: #d4edda; color: #155724; font-size: .7rem; font-weight: 700;
+  }
+
+  /* Pagination */
+  .pagination { display: flex; gap: 8px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+  .page-btn {
+    border: 1.5px solid var(--border); background: #fff; border-radius: 10px;
+    padding: 7px 14px; font-size: .85rem; cursor: pointer; font-family: inherit;
+    transition: all .2s;
+  }
+  .page-btn:hover, .page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .page-btn:disabled { opacity: .4; cursor: default; }
+
+  /* No results */
+  .no-results { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .no-results h3 { font-size: 1.2rem; margin-bottom: 8px; color: var(--text); }
+
+  @media (max-width: 768px) {
+    .header, .stats, .map-wrap, .filters, .table-wrap { padding-left: 16px; padding-right: 16px; }
+    .stats { gap: 12px; }
+    .stat { min-width: 120px; padding: 14px 18px; }
+    .stat-num { font-size: 1.5rem; }
+    .prop-table thead { display: none; }
+    .prop-row td { display: block; padding: 8px 16px; }
+    .prop-row td:first-child { padding-top: 16px; }
+    .prop-row td:last-child { padding-bottom: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <h1>Cocheras en <span>Alquiler</span></h1>
+  <p>Belgrano · Las Cañitas · Palermo — resultados en tiempo real de 4 portales</p>
+  <div class="header-ref">
+    <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+    Luis María Campos y Teodoro García, Las Cañitas
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat">
+    <div class="stat-num">77</div>
+    <div class="stat-label">Cocheras encontradas</div>
+  </div>
+  <div class="stat green">
+    <div class="stat-num">8</div>
+    <div class="stat-label">Dentro de 1 km</div>
+  </div>
+  <div class="stat gold">
+    <div class="stat-num">3</div>
+    <div class="stat-label">Aptas para SUV</div>
+  </div>
+  <div class="stat red">
+    <div class="stat-num">4</div>
+    <div class="stat-label">Portales consultados</div>
+  </div>
+</div>
+
+<!-- MAP -->
+<div class="map-wrap">
+  <div id="map"></div>
+</div>
+
+<!-- FILTERS -->
+<div class="filters">
+  <div class="filter-group">
+    <label>Precio máximo (ARS)</label>
+    <input type="number" id="maxPrecio" placeholder="Sin límite" step="10000">
+  </div>
+  <div class="filter-group">
+    <label>Distancia máxima (metros)</label>
+    <input type="number" id="maxDist" placeholder="Ej: 800" step="100">
+  </div>
+  <div class="filter-group">
+    <label>Filtros rápidos</label>
+    <div class="toggle-group">
+      <button class="toggle-btn" id="btnSuv" onclick="toggleFilter('suv')">Solo SUV</button>
+      <button class="toggle-btn" id="btnKm" onclick="toggleFilter('km')">Solo &lt;1 km</button>
+    </div>
+  </div>
+  <button class="reset-btn" onclick="resetFilters()">Limpiar filtros</button>
+</div>
+
+<!-- TABLE -->
+<div class="table-wrap">
+  <div class="table-header">
+    <div class="result-count">Mostrando <strong id="countVisible">77</strong> cocheras</div>
+  </div>
+  <table class="prop-table" id="tabla">
+    <thead>
+      <tr>
+        <th onclick="sortTable(0)" data-col="0">Portal <span class="sort-icon"></span></th>
+        <th onclick="sortTable(1)" data-col="1">Propiedad <span class="sort-icon"></span></th>
+        <th onclick="sortTable(2)" data-col="2">Precio <span class="sort-icon"></span></th>
+        <th onclick="sortTable(3)" data-col="3">Distancia <span class="sort-icon"></span></th>
+        <th>SUV</th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+      
+      <tr class="prop-row"
+          data-precio="2200"
+          data-dist="374"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-de-cocheras-en-palermo-56264939.html?n_src=Listado&n_pg=1&n_pos=6', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-de-cocheras-en-palermo-56264939.html?n_src=Listado&n_pg=1&n_pos=6" target="_blank" onclick="event.stopPropagation()">
+            Alquiler de excelente espacio en subsuelo con capacidad para guardar Y circulacion de vehiculos. Paraguay 5300, Palermo Hollywood. Excelente oportunidad en Palermo. Ubicado sobre la calle Paraguay al 5300, en pleno corazón de Palermo Hollywood, se encuentra este amplio espacio de 400 metros de cocheras subterráneas y una baulera. Ubicación estratégica, rodeado de comercios, edificios residenciales y con excelente conectividad. La. El inmueble cuenta con accesibilidad para personas con movilidad reducida (Ley 5115) cmcpsi 6202 cucicba 7746. Nota importante: Las imágenes en este anuncio son meramente ilustrativas no teniendo carácter contractual. El importe de expensas e impuestos anunciados ha sido extraído de la facturación y documentación aportada por el propietario, siendo orientativo y no vinculante, encontrándose sujeto a variaciones sin previa publicidad. Las medidas aportadas en esta publicación son aproximadas y a título informativo. La medida original surgirá de los respectivos planos yo escritura del inmueble.
+          </a>
+          <div class="prop-addr">Paraguay 5300, Palermo Hollywood, Palermo</div>
+        </td>
+        <td>
+          <div class="prop-price usd">
+            USD 2.200
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill near">📍 374 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="200000"
+          data-dist="374"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-en-bloque-cocheras.-palermo-hollywood-58580824.html?n_src=Listado&n_pg=1&n_pos=9', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-en-bloque-cocheras.-palermo-hollywood-58580824.html?n_src=Listado&n_pg=1&n_pos=9" target="_blank" onclick="event.stopPropagation()">
+            Alquiler en bloque cocheras en subsuelo con bauleras-oportunidad bajas expensas!!. Palermo Hollywood | Acceso independiente. Se ofrece alquiler en bloque un amplio sector de cocheras en subsuelo, ubicadas dentro de edificio sobre la calle Paraguay 5300 (entre Bonpland y Carranza), en una de las zonas más demandadas de Palermo Hollywood. El espacio cuenta con una superficie total aproximada de346 m², destinado a cocheras/guardacoches, con ingreso vehicular mediante portón independiente, lo que garantiza operatividad, seguridad y privacidad. El conjunto se complementa con dos bauleras de 11 m² y 32 m², ambas con puertas privadas, totalmente independientes de las áreas comunes y del ingreso al edificio, ideales para depósito, guardado o uso logístico. En cumplimiento de las leyes vigentes que regulan el corretaje inmobiliario, Ley Nacional 25. 028, Ley 2. 340, Ley 10. 973, Ley 24. 240 de Defensa al Consumidor, las normas del Código Civil y Comercial de la Nación y Constitucionales, los agentes/gestores no ejercen el corretaje inmobiliario. Todas las operaciones inmobiliarias son objeto de intermediación y conclusión por parte del corredor público inmobiliario colegiado a cargo de la publicación, cuyos datos se exhiben en la presente. Corredor Responsable: Diego Mastrangelo cucicba 7615 csi 6609- Contacto: Jose Luis Caputo Olivera. - kpVer datos - kptVer datos- - Publicado usando KiteProp crm Inmobiliario
+          </a>
+          <div class="prop-addr">Paraguay 5300, Palermo Hollywood, Palermo</div>
+        </td>
+        <td>
+          <div class="prop-price usd">
+            USD 2.200
+$ 200.000 Expensas
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill near">📍 374 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="100000"
+          data-dist="593"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-cc4f-848858fc0cfe-19d4308-ae9a-7b53', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-cc4f-848858fc0cfe-19d4308-ae9a-7b53" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Las Cañitas
+          </a>
+          <div class="prop-addr">Las Cañitas, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 100.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill mid">📍 593 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="200000"
+          data-dist="593"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-d67c-c161d1d6642d-19db2da-9d0b-7f61', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-d67c-c161d1d6642d-19db2da-9d0b-7f61" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Las Cañitas
+          </a>
+          <div class="prop-addr">Las Cañitas, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 200.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill mid">📍 593 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="1800"
+          data-dist="772"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-8c0d-220b4ca69ff5-19dddb2-81ec-76db', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-8c0d-220b4ca69ff5-19dddb2-81ec-76db" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Palermo Hollywood
+          </a>
+          <div class="prop-addr">Palermo Hollywood, Palermo, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price usd">
+            USD 1.800
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill mid">📍 772 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="150000"
+          data-dist="772"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-5604-9abbfc20c6d1-19d4bdf-b626-7060', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-5604-9abbfc20c6d1-19d4bdf-b626-7060" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Palermo Hollywood
+          </a>
+          <div class="prop-addr">Palermo Hollywood, Palermo, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 150.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill mid">📍 772 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="230000"
+          data-dist="772"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-44b8-2cf60ae6037c-19d7524-8b46-7385', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-44b8-2cf60ae6037c-19d7524-8b46-7385" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Palermo Hollywood
+          </a>
+          <div class="prop-addr">Palermo Hollywood, Palermo, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 230.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill mid">📍 772 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="200000"
+          data-dist="904"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-costa-rica-5546-palermo-hollywood-palermo-22138191.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=16', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-costa-rica-5546-palermo-hollywood-palermo-22138191.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=16" target="_blank" onclick="event.stopPropagation()">
+            Cochera cubierta en Costa Rica y Fitz Roy. Planta completa de cocheras en pleno corazón de Palermo Hollywood. A metros de las principales emisoras y productoras de televisión, y los mejores restaurantes. Todas las unidades funcionales del edificio son oficinas comerciales, con un local comercial en la planta baja. Vigilancia las 24 hs. Nota: Las medidas, superficies y expensas consignadas en la presente son aproximadas; y al solo efecto orientativo. Los datos definitivos son los que surgirán del titulo de la propiedad y de los comprobantes respaldatorios. Visitar únicamente con personal de la firma previa coordinación de cita. Para más información comunicarse a los teléfonos: Ver datos. Ver datos. Ver datos. "next management S. A. " Matrícula cucicba 804.
+          </a>
+          <div class="prop-addr">Costa Rica 5546, Palermo Hollywood, Palermo</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 200.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill mid">📍 904 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="200000"
+          data-dist="1046"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-para-exclusivamente-habitantes-complejo-53727875.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=7', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-para-exclusivamente-habitantes-complejo-53727875.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=7" target="_blank" onclick="event.stopPropagation()">
+            Solamente para ser alquilada para habitantes del complejo concepcion, conesa Y concepcion arenal, cochera fija en el segundo subsuelo. Ingreso automatizado. Vigilancia 24 hs Y camara en las plantas.
+          </a>
+          <div class="prop-addr">CONCEPCION ARENAL 2900, Colegiales, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 200.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 1046 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="100000"
+          data-dist="1125"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-botanico-58698535.html?n_src=Listado&n_pg=1&n_pos=8', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-botanico-58698535.html?n_src=Listado&n_pg=1&n_pos=8" target="_blank" onclick="event.stopPropagation()">
+            Palermo, Cochera fija y cubierta. Para auto muy chico o motoA dos cuadras de Plaza Italia. Cochera en Subsuelo Consúltenos para mayor información. &quot;Para los casos de alquiler de vivienda, el monto máximo de comisión que se le puede requerir a los propietarios será el equivalente al cuatro con quince centésimos por ciento (4, 15%) del valor total del respectivo contrato. Se encuentra prohibido cobrar a los inquilinos que sean personas físicas comisiones inmobiliarias y gastos de gestoría de informes&quot;. -• Las medidas son aproximadas, las exactas surgen de la escritura traslativa de dominio. • El valor de las expensas corresponde al último mes en curso, las mismas podrán sufrir modificaciones de acuerdo el respectivo consorcio.
+          </a>
+          <div class="prop-addr">Guemes 4400, Botánico, Palermo</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 100.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 1125 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="100000"
+          data-dist="1280"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-5678-93d512aac922-19d321f-b744-79ed', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-5678-93d512aac922-19d321f-b744-79ed" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Palermo Soho
+          </a>
+          <div class="prop-addr">Palermo Soho, Palermo, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 100.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 1280 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="190000"
+          data-dist="1280"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-df46-b154e72b822c-19dbf05-af5c-7d90', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-df46-b154e72b822c-19dbf05-af5c-7d90" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Palermo Soho
+          </a>
+          <div class="prop-addr">Palermo Soho, Palermo, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 190.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 1280 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="139000"
+          data-dist="1509"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera.-niceto-vega-al-5900-58459334.html?n_src=Listado&n_pg=1&n_pos=12', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera.-niceto-vega-al-5900-58459334.html?n_src=Listado&n_pg=1&n_pos=12" target="_blank" onclick="event.stopPropagation()">
+            Alquiler de Cochera en Palermo, Capital Federal. aviso de alquiler. lepore propiedades T. Ver datos C. 11 Ver datos. lepore Propiedades S. A. Cuit: Ver datos-9 C. U. C. I. C. B. A. Matrícula Nº 931 (Sucursales Caballito - Palermo - Centro) aviso legal: Las descripciones arquitectónicas y funcionales, valores de expensas yo gastos comunes, impuestos y servicios, fotos y medidas de este inmueble son aproximados. Los datos fueron proporcionados por el propietario y pueden no estar actualizados a la hora de la visualización de este aviso por lo cual pueden arrojar inexactitudes y discordancias con las que surgen de las facturas, títulos y planos legales del inmueble. El interesado deberá realizar las verificaciones respectivas con carácter previo a la realización de cualquier operación, requiriendo por sí o sus profesionales de confianza las copias necesarias de la documentación que corresponda. Se encuentra prohibido cobrar comisiones inmobiliarias y gastos de gestoría de informes a los inquilinos que sean personas físicas. Para los casos de alquiler de vivienda, el monto máximo de comisión que se le puede requerir a los propietarios será el equivalente al cuatro con quince centésimos por ciento (4, 15%) del valor total del respectivo contrato (conf. El Art. 4 de la Ley 5. 859 de C. A. B. A) Propiedad según Ley 5115 La accesibilidad para las personas con discapacidades físicas. "accesible"xintel(lep-le1-Ver datos)
+          </a>
+          <div class="prop-addr">NICETO VEGA 5954, Palermo, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 139.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 1509 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="2350"
+          data-dist="1530"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-3f2c-b86fb2c6a6cb-409f4a22-a2c8-32f7', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-3f2c-b86fb2c6a6cb-409f4a22-a2c8-32f7" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Palermo Viejo
+          </a>
+          <div class="prop-addr">Palermo Viejo, Palermo, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 2.350
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 1530 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="150000"
+          data-dist="1545"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-en-alquiler-excelente-ubicacion-57645359.html?n_src=Listado&n_pg=1&n_pos=4', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-en-alquiler-excelente-ubicacion-57645359.html?n_src=Listado&n_pg=1&n_pos=4" target="_blank" onclick="event.stopPropagation()">
+            Alquiler de cochera en 2do subsuelo teodoro garcia 2261 belgrano. excelente ubicacion. 150. 000 actualizacion trimestral. expensas 110. 000 aproximadamente
+          </a>
+          <div class="prop-addr">Teodoro García 2261, Palermo, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 150.000
+$ 110.000 Expensas
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 1545 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="230000"
+          data-dist="1719"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-excelente-cochera-fija-individual-58808311.html?n_src=Listado&n_pg=1&n_pos=14', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-excelente-cochera-fija-individual-58808311.html?n_src=Listado&n_pg=1&n_pos=14" target="_blank" onclick="event.stopPropagation()">
+            Excelente cochera fija en belgrano
+          </a>
+          <div class="prop-addr">Ciudad DE LA PAZ 1800, Colegiales, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 230.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 1719 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="140000"
+          data-dist="2011"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-de-cochera-en-palermo-58849321.html?n_src=Listado&n_pg=1&n_pos=17', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-de-cochera-en-palermo-58849321.html?n_src=Listado&n_pg=1&n_pos=17" target="_blank" onclick="event.stopPropagation()">
+            Alquiler de cochera en Palermo, cuenta con portón automático, ubicado en una zona de mucha demanda de cocheras. El precio no incluye las expensas, servicios e impuestos que se pagan a parte. Se paga el primer mes por adelantado. Un mes depósito adelantado a cuenta del último mes. Honorarios inmobiliarios.
+          </a>
+          <div class="prop-addr">Aráoz 1292, Palermo, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 140.000
+$ 62.000 Expensas
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2011 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="120000"
+          data-dist="2404"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquila-cochera-pequena.-cuba-1800.-belgrano.-58812458.html?n_src=Listado&n_pg=1&n_pos=5', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquila-cochera-pequena.-cuba-1800.-belgrano.-58812458.html?n_src=Listado&n_pg=1&n_pos=5" target="_blank" onclick="event.stopPropagation()">
+            Se alquila cochera fija cubierta pequeña (un auto chico o dos motos) en zona de Belgrano. Seguridad 24 hs. La cochera está ubicada en el tercer subsuelo, cuenta con amplias rampas y buen radio de giro. Inmejorable ubicación a pasos del Paseo del Ángel y a dos cuadras de Cabildo. Contrato Temporario cada 3 meses actualización por ipc. Expensas $20. 000. - Se deja constancia que las medidas, superficies, metros cuadrados y proporciones consignadas son aproximados, está sujeto a verificación y/o ajuste. El precio del inmueble puede ser modificado sin previo aviso. Fotos de carácter no contractual. *Esta propiedad no posee rampa de acceso para personas con movilidad reducida. *Matrícula cucicba 7445
+          </a>
+          <div class="prop-addr">Cuba 1800, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 120.000
+$ 20.000 Expensas
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2404 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="120000"
+          data-dist="2404"
+          data-suv="no"
+          onclick="window.open('https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19396802', '_blank')">
+        <td>
+          <span class="badge-portal badge-argenprop">Argenprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19396802" target="_blank" onclick="event.stopPropagation()">
+            Cochera en Alquiler en Belgrano, Capital Federal
+          </a>
+          <div class="prop-addr">Cuba 1800</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 120.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2404 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="60000"
+          data-dist="2543"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-venta-de-cochera-fija-en-belgrano-54692212.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=8', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-venta-de-cochera-fija-en-belgrano-54692212.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=8" target="_blank" onclick="event.stopPropagation()">
+            Venta cochera fija Y cubierta en belgranoopcion alquileredificio de cocheras ubicado sobre jose hernandez, entre las calles moldes y vidalcochera muy cómodaacceso por rampasingreso con control remotovigilanciaexcelente ubicacionbuenos accesosse deja constancia que los metros parciales, así como el monto de las expensas e impuestos son aproximados a título orientativo sujetos a verificación y/o ajustes. cucicba N° 6600
+          </a>
+          <div class="prop-addr">Jose Hernandez 2700, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 60.000
+$ 32.000 Expensas
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2543 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="230000"
+          data-dist="2543"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-excelente-cochera-fija-individual-58798167.html?n_src=Listado&n_pg=1&n_pos=7', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-excelente-cochera-fija-individual-58798167.html?n_src=Listado&n_pg=1&n_pos=7" target="_blank" onclick="event.stopPropagation()">
+            Excelente cochera fija en belgrano
+          </a>
+          <div class="prop-addr">Ciudad DE LA PAZ 1800, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 230.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2543 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="230000"
+          data-dist="2543"
+          data-suv="no"
+          onclick="window.open('https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19385026', '_blank')">
+        <td>
+          <span class="badge-portal badge-argenprop">Argenprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19385026" target="_blank" onclick="event.stopPropagation()">
+            Cochera en Alquiler en Belgrano, Capital Federal
+          </a>
+          <div class="prop-addr">CIUDAD DE LA PAZ 1800</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 230.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2543 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="230000"
+          data-dist="2543"
+          data-suv="no"
+          onclick="window.open('https://inmueble.mercadolibre.com.ar/MLA-3164636988-excelente-cochera-fija-individual-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=7&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply', '_blank')">
+        <td>
+          <span class="badge-portal badge-mercadolibre">MercadoLibre</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://inmueble.mercadolibre.com.ar/MLA-3164636988-excelente-cochera-fija-individual-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=7&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply" target="_blank" onclick="event.stopPropagation()">
+            Excelente Cochera Fija Individual
+          </a>
+          <div class="prop-addr">Ciudad DE LA PAZ 1800, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            230000 pesos argentinos
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2543 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="145000"
+          data-dist="2544"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-5dd1-bbfa143e5139-19ddc0d-8d74-79fa', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-5dd1-bbfa143e5139-19ddc0d-8d74-79fa" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Villa Crespo
+          </a>
+          <div class="prop-addr">Villa Crespo, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 145.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2544 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="150000"
+          data-dist="2563"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-en-palermo-58909863.html?n_src=Listado&n_pg=1&n_pos=1', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-en-palermo-58909863.html?n_src=Listado&n_pg=1&n_pos=1" target="_blank" onclick="event.stopPropagation()">
+            Estratégica ubicación - Medrano, entre Gorriti y Honduras. Cocheras cubiertas disponibles en edificio privadoPortón automático Fácil acceso en Planta Baja, sin rampa, sin montacargas El alquiler mensual es de $ 150. 000, incluye todos los gastos
+          </a>
+          <div class="prop-addr">Medrano 1200, Palermo, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 150.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2563 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="200000"
+          data-dist="2701"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-caf0-d4c0152e324b-19bf7f3-803b-7f4c', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-caf0-d4c0152e324b-19bf7f3-803b-7f4c" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Palermo Chico
+          </a>
+          <div class="prop-addr">Palermo Chico, Palermo, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 200.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2701 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="250000"
+          data-dist="2814"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-cochera-rampa-ascensor-vigilancia-58818447.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=4', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-cochera-rampa-ascensor-vigilancia-58818447.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=4" target="_blank" onclick="event.stopPropagation()">
+            Alquiler de Cochera en Belgrano – Echeverría al 2600Excelente oportunidad en pleno Belgrano. Cochera ubicada en 2° piso por rampa, dentro de edificio abierto y con seguridad 24 hs, que brinda mayor comodidad y tranquilidad. Características: Expensas: $80. 000. Valor de alquiler: $250. 000. Acceso cómodo por rampa. Ubicación estratégica en Belgrano, a pasos de avenidas principales, comercios y medios de transporte. ¡Consultanos para más información y coordiná tu visita! Facundo orestes vivas real estatemat. N°4034. T° lx F° 4034cmycpdjmecucicba 8616Art. 4 de la ley 5859 y Art. 10 inc. 8 de la ley 2340
+          </a>
+          <div class="prop-addr">Echeverría 2600, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 250.000
+$ 80.000 Expensas
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2814 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="250000"
+          data-dist="2814"
+          data-suv="no"
+          onclick="window.open('https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19408249', '_blank')">
+        <td>
+          <span class="badge-portal badge-argenprop">Argenprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19408249" target="_blank" onclick="event.stopPropagation()">
+            Cochera en Alquiler en Belgrano, Capital Federal
+          </a>
+          <div class="prop-addr">Echeverría 2600</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 250.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2814 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="250000"
+          data-dist="2814"
+          data-suv="no"
+          onclick="window.open('https://inmueble.mercadolibre.com.ar/MLA-3174198410-alquiler-cochera-rampa-ascensor-vigilancia-belgrano-capital-federal-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=6&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply', '_blank')">
+        <td>
+          <span class="badge-portal badge-mercadolibre">MercadoLibre</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://inmueble.mercadolibre.com.ar/MLA-3174198410-alquiler-cochera-rampa-ascensor-vigilancia-belgrano-capital-federal-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=6&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply" target="_blank" onclick="event.stopPropagation()">
+            Alquiler - Cochera - Rampa - Ascensor - Vigilancia -belgrano - Capital Federal
+          </a>
+          <div class="prop-addr">Echeverría 2600, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            250000 pesos argentinos
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2814 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="260000"
+          data-dist="2963"
+          data-suv="no"
+          onclick="window.open('https://inmueble.mercadolibre.com.ar/MLA-1758775229-cochera-en-el-2do-subsuelo-seguridad-las-24hs-del-dia-se-encuentra-exactamente-en-frente-al-sanatorio-fleni-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=15&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply', '_blank')">
+        <td>
+          <span class="badge-portal badge-mercadolibre">MercadoLibre</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://inmueble.mercadolibre.com.ar/MLA-1758775229-cochera-en-el-2do-subsuelo-seguridad-las-24hs-del-dia-se-encuentra-exactamente-en-frente-al-sanatorio-fleni-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=15&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply" target="_blank" onclick="event.stopPropagation()">
+            Cochera En El 2do Subsuelo. Seguridad Las 24hs Del Dia. Se Encuentra Exactamente En Frente Al Sanatorio Fleni
+          </a>
+          <div class="prop-addr">Montañeses 2342, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            260000 pesos argentinos
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2963 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="30000"
+          data-dist="2978"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-montaneses-y-b.-encalada-cocheras-en-venta-frente-al-53905241.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=10', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-montaneses-y-b.-encalada-cocheras-en-venta-frente-al-53905241.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=10" target="_blank" onclick="event.stopPropagation()">
+            Montañeses y B. Encalada cocheras en venta frente al Fleni, abierto 24hs primer subsuelo excelente ubicación.
+          </a>
+          <div class="prop-addr">Montañeses 2360, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price usd">
+            USD 30.000
+$ 50.000 Expensas
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 2978 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="110000"
+          data-dist="3032"
+          data-suv="no"
+          onclick="window.open('https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19470442', '_blank')">
+        <td>
+          <span class="badge-portal badge-argenprop">Argenprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19470442" target="_blank" onclick="event.stopPropagation()">
+            Cochera en Alquiler en Belgrano, Capital Federal
+          </a>
+          <div class="prop-addr">LAPRIDA 1900</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 110.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3032 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="150000"
+          data-dist="3081"
+          data-suv="no"
+          onclick="window.open('https://inmueble.mercadolibre.com.ar/MLA-1742478701-cochera-descubierta-terraza-garaje-privado-en-belgrano-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=13&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply', '_blank')">
+        <td>
+          <span class="badge-portal badge-mercadolibre">MercadoLibre</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://inmueble.mercadolibre.com.ar/MLA-1742478701-cochera-descubierta-terraza-garaje-privado-en-belgrano-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=13&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply" target="_blank" onclick="event.stopPropagation()">
+            Cochera Descubierta Terraza Garaje Privado En Belgrano!!
+          </a>
+          <div class="prop-addr">Céspedes 2200, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            150000 pesos argentinos
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3081 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="140000"
+          data-dist="3093"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-cub.-belgrano-58983829.html?n_src=Listado&n_pg=1&n_pos=1', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-cub.-belgrano-58983829.html?n_src=Listado&n_pg=1&n_pos=1" target="_blank" onclick="event.stopPropagation()">
+            Cochera fija para auto mediano cubierta. porton automatico. el precio incluye expensas. espacio para girar en el fondo
+          </a>
+          <div class="prop-addr">Moldes 2200, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 140.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3093 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="140000"
+          data-dist="3093"
+          data-suv="no"
+          onclick="window.open('https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19549803', '_blank')">
+        <td>
+          <span class="badge-portal badge-argenprop">Argenprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19549803" target="_blank" onclick="event.stopPropagation()">
+            Cochera en Alquiler en Belgrano, Capital Federal
+          </a>
+          <div class="prop-addr">Moldes 2200</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 140.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3093 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="140000"
+          data-dist="3093"
+          data-suv="no"
+          onclick="window.open('https://inmueble.mercadolibre.com.ar/MLA-3249957136-cochera-cub-belgrano-_JM#polycard_client=search-desktop&float_highlight=recent_publication&price_drop=not_apply&be_origin=backend&search_layout=grid&position=5&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a', '_blank')">
+        <td>
+          <span class="badge-portal badge-mercadolibre">MercadoLibre</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://inmueble.mercadolibre.com.ar/MLA-3249957136-cochera-cub-belgrano-_JM#polycard_client=search-desktop&float_highlight=recent_publication&price_drop=not_apply&be_origin=backend&search_layout=grid&position=5&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a" target="_blank" onclick="event.stopPropagation()">
+            Cochera Cub. Belgrano
+          </a>
+          <div class="prop-addr">Moldes 2200, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            140000 pesos argentinos
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3093 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="60000"
+          data-dist="3122"
+          data-suv="no"
+          onclick="window.open('https://www.argenprop.com/cochera-en-alquiler-en-belgrano--18334792', '_blank')">
+        <td>
+          <span class="badge-portal badge-argenprop">Argenprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.argenprop.com/cochera-en-alquiler-en-belgrano--18334792" target="_blank" onclick="event.stopPropagation()">
+            Cochera en Alquiler en Belgrano, Capital Federal
+          </a>
+          <div class="prop-addr">Olazabal 2500</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 60.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3122 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="150000"
+          data-dist="3149"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgapa-150.000-cochera-ciudad-de-la-oaz-al-2900-58788302.html?n_src=Listado&n_pg=1&n_pos=11', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgapa-150.000-cochera-ciudad-de-la-oaz-al-2900-58788302.html?n_src=Listado&n_pg=1&n_pos=11" target="_blank" onclick="event.stopPropagation()">
+            Dueño alquila cochera en Ciudad de La Paz al 2900 expensas incluidas. Superficie Alrededor de 12 mt2. Estacionamiento 24hs. Actualizacion semestral segun ipc..
+          </a>
+          <div class="prop-addr">Ciudad de la Paz, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 150.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3149 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="250000"
+          data-dist="3161"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-cochera-tercer-piso-rampa-belgrano-58818418.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=3', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-cochera-tercer-piso-rampa-belgrano-58818418.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=3" target="_blank" onclick="event.stopPropagation()">
+            Cochera en alquiler en Belgrano – Olazábal 2600Amplia cochera ubicada en el 3° piso por rampa, dentro de un edificio moderno y seguro. Cuenta con excelente acceso y comodidad de maniobra, ideal para uso diario. El edificio dispone de dos ascensores para personas, control remoto para ingreso y salida, y vigilancia las 24 horas, brindando seguridad y practicidad. Valor de alquiler: $250. 000Expensas: $75. 000Ubicada en una de las zonas más buscadas de Belgrano, con excelente conectividad y accesos. ¡No dejes pasar esta oportunidad! Contactanos para más información o para coordinar una visita. Facundo orestes vivas real estatemat. N°4034. T° lx F° 4034cmycpdjmecucicba 8616Art. 4 de la ley 5859 y Art. 10 inc. 8 de la ley 2340
+          </a>
+          <div class="prop-addr">Olazabal 2600, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 250.000
+$ 75.000 Expensas
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3161 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="250000"
+          data-dist="3161"
+          data-suv="no"
+          onclick="window.open('https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19407377', '_blank')">
+        <td>
+          <span class="badge-portal badge-argenprop">Argenprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19407377" target="_blank" onclick="event.stopPropagation()">
+            Cochera en Alquiler en Belgrano, Capital Federal
+          </a>
+          <div class="prop-addr">Olazabal 2600</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 250.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3161 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="150000"
+          data-dist="3183"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-e368-ca7325bb36db-19db2ea-a250-7aab', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-e368-ca7325bb36db-19db2ea-a250-7aab" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Barrio Norte
+          </a>
+          <div class="prop-addr">Barrio Norte, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 150.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3183 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="170000"
+          data-dist="3183"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-fe2c-5af9e7c6eace-19bfa89-b465-70e2', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-fe2c-5af9e7c6eace-19bfa89-b465-70e2" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Barrio Norte
+          </a>
+          <div class="prop-addr">Barrio Norte, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 170.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3183 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="180000"
+          data-dist="3183"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-b617-3540e68fe62c-19d4be3-b09c-7328', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-b617-3540e68fe62c-19d4be3-b09c-7328" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Barrio Norte
+          </a>
+          <div class="prop-addr">Barrio Norte, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 180.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3183 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="240000"
+          data-dist="3183"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-87f6-cd22eaef8539-19d9ffc-89da-70f1', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-87f6-cd22eaef8539-19d9ffc-89da-70f1" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Barrio Norte
+          </a>
+          <div class="prop-addr">Barrio Norte, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 240.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3183 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="180000"
+          data-dist="3184"
+          data-suv="no"
+          onclick="window.open('https://inmueble.mercadolibre.com.ar/MLA-3236134292-alquilo-cochera-cubierta-en-2do-piso-por-rampa-fija-_JM#polycard_client=search-desktop&float_highlight=recent_publication&price_drop=not_apply&be_origin=backend&search_layout=grid&position=8&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a', '_blank')">
+        <td>
+          <span class="badge-portal badge-mercadolibre">MercadoLibre</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://inmueble.mercadolibre.com.ar/MLA-3236134292-alquilo-cochera-cubierta-en-2do-piso-por-rampa-fija-_JM#polycard_client=search-desktop&float_highlight=recent_publication&price_drop=not_apply&be_origin=backend&search_layout=grid&position=8&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a" target="_blank" onclick="event.stopPropagation()">
+            Alquilo Cochera Cubierta En 2do Piso Por Rampa Fija
+          </a>
+          <div class="prop-addr">Olazábal 2650, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            180000 pesos argentinos
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3184 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="190000"
+          data-dist="3185"
+          data-suv="no"
+          onclick="window.open('https://inmueble.mercadolibre.com.ar/MLA-3148262786-exelentes-cocheras-fijas-en-venta-o-alquiler-primer-subsuelo-gastos-incluidos-precio-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=3&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply', '_blank')">
+        <td>
+          <span class="badge-portal badge-mercadolibre">MercadoLibre</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://inmueble.mercadolibre.com.ar/MLA-3148262786-exelentes-cocheras-fijas-en-venta-o-alquiler-primer-subsuelo-gastos-incluidos-precio-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=3&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply" target="_blank" onclick="event.stopPropagation()">
+            Exelentes Cocheras Fijas En Venta O Alquiler Primer Subsuelo Gastos Incluidos Precio
+          </a>
+          <div class="prop-addr">CIUDAD DE LA PAZ 2347, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            190000 pesos argentinos
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3185 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="250000"
+          data-dist="3236"
+          data-suv="no"
+          onclick="window.open('https://inmueble.mercadolibre.com.ar/MLA-1755522933-cochera-en-subsuelo-facil-acceso-seguridad-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=11&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply', '_blank')">
+        <td>
+          <span class="badge-portal badge-mercadolibre">MercadoLibre</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://inmueble.mercadolibre.com.ar/MLA-1755522933-cochera-en-subsuelo-facil-acceso-seguridad-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=11&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply" target="_blank" onclick="event.stopPropagation()">
+            Cochera En Subsuelo. Fácil Acceso. Seguridad
+          </a>
+          <div class="prop-addr">Vuelta De Obligado 2455, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            250000 pesos argentinos
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3236 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="200000"
+          data-dist="3345"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-fija-cubierta-montacarga-belgrano-58866574.html?n_src=Listado&n_pg=1&n_pos=2', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-fija-cubierta-montacarga-belgrano-58866574.html?n_src=Listado&n_pg=1&n_pos=2" target="_blank" onclick="event.stopPropagation()">
+            Se alquila cochera fija Y cubierta, en belgrano, se accede por montacarga al subsuelo. Para auto mediano. A metros de libertador. Y monroe. Para entrar en mayo.
+          </a>
+          <div class="prop-addr">Montañeses 2667, Belgrano C, Belgrano</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 200.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3345 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="15000"
+          data-dist="3370"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-c8e8-b0120f339cb5-19109a6-8cc1-782c', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-c8e8-b0120f339cb5-19109a6-8cc1-782c" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Distrito Audiovisual
+          </a>
+          <div class="prop-addr">Distrito Audiovisual, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 15.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3370 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="100000"
+          data-dist="3370"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-7990-641933f4b893-19db2c7-8d97-7433', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-7990-641933f4b893-19db2c7-8d97-7433" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Distrito Audiovisual
+          </a>
+          <div class="prop-addr">Distrito Audiovisual, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 100.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3370 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="100000"
+          data-dist="3515"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-87a3-b08c2dfa4925-19d9585-98b6-7b39', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-87a3-b08c2dfa4925-19d9585-98b6-7b39" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Abasto
+          </a>
+          <div class="prop-addr">Abasto, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 100.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3515 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="95000"
+          data-dist="3635"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/veclgain-cochera-descubierta-en-edificio-residencial-con-exc-58981920.html?n_src=Listado&n_pg=1&n_pos=6', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/veclgain-cochera-descubierta-en-edificio-residencial-con-exc-58981920.html?n_src=Listado&n_pg=1&n_pos=6" target="_blank" onclick="event.stopPropagation()">
+            Cochera Descubierta en Edificio Residencial con Exc. Ubicación. El valor de las Expensas es de $ 38. 000. - (Abril 2026) En cumplimiento con las leyes que regulan el corretaje inmobiliario, todas las operaciones inmobiliarias son objeto de intermediación y conclusión por parte del matriculado, cuyos datos se exhiben. Las medidas, superficies, expensas y antigüedad consignadas en la presente ficha pueden no ser exactas. Los datos definitivos son los que surgen del título de propiedad y de la documentación correspondiente.
+          </a>
+          <div class="prop-addr">Conesa 2563, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 95.000
+$ 38.000 Expensas
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3635 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="100000"
+          data-dist="3783"
+          data-suv="no"
+          onclick="window.open('https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19424259', '_blank')">
+        <td>
+          <span class="badge-portal badge-argenprop">Argenprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19424259" target="_blank" onclick="event.stopPropagation()">
+            Cochera en Alquiler en Belgrano, Capital Federal
+          </a>
+          <div class="prop-addr">Avenida Monroe 2500</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 100.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3783 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="180000"
+          data-dist="3816"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgapa-alquilo-cochera-cubierta-en-edificio-de-cocheras-58247287.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=12', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgapa-alquilo-cochera-cubierta-en-edificio-de-cocheras-58247287.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=12" target="_blank" onclick="event.stopPropagation()">
+            Alquilo cochera en 2° piso (individual entre paredes). Valor $ 180. 000. Acceso por rampas fijas y vigilancia las 24 hs. Acceso peatonal por escalera o ascensores.
+          </a>
+          <div class="prop-addr">Avenida Olazábal 2650, Belgrano R, Belgrano</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 180.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3816 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="200000"
+          data-dist="3816"
+          data-suv="no"
+          onclick="window.open('https://inmueble.mercadolibre.com.ar/MLA-1766520115-excelente-cochera-autos-con-control-y-acceso-_JM#polycard_client=search-desktop&float_highlight=recent_publication&price_drop=not_apply&be_origin=backend&search_layout=grid&position=12&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a', '_blank')">
+        <td>
+          <span class="badge-portal badge-mercadolibre">MercadoLibre</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://inmueble.mercadolibre.com.ar/MLA-1766520115-excelente-cochera-autos-con-control-y-acceso-_JM#polycard_client=search-desktop&float_highlight=recent_publication&price_drop=not_apply&be_origin=backend&search_layout=grid&position=12&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a" target="_blank" onclick="event.stopPropagation()">
+            Excelente Cochera Autos Con Control Y Acceso
+          </a>
+          <div class="prop-addr">Av. Olazábal 2650, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            200000 pesos argentinos
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3816 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="80000"
+          data-dist="3886"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-cde4-1e1b8cc83676-19cd548-8ed0-7bc5', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-cde4-1e1b8cc83676-19cd548-8ed0-7bc5" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Almagro
+          </a>
+          <div class="prop-addr">Almagro, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 80.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3886 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="130000"
+          data-dist="3886"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-6bfa-133fbd242339-19d4e6b-8353-77ac', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-6bfa-133fbd242339-19d4e6b-8353-77ac" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Almagro
+          </a>
+          <div class="prop-addr">Almagro, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 130.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3886 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="150000"
+          data-dist="3886"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-dbd8-10bf9b064b4f-19da88a-b79f-7c70', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-dbd8-10bf9b064b4f-19da88a-b79f-7c70" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Almagro
+          </a>
+          <div class="prop-addr">Almagro, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 150.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 3886 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="180000"
+          data-dist="4696"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-cubierta-58955685.html?n_src=Listado&n_pg=1&n_pos=2', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-cubierta-58955685.html?n_src=Listado&n_pg=1&n_pos=2" target="_blank" onclick="event.stopPropagation()">
+            Cochera fija N°11El valor del alquiler Incluye expensas e impuestos
+          </a>
+          <div class="prop-addr">Mendoza 4900, Villa Urquiza, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 180.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 4696 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="170000"
+          data-dist="5096"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-7c70-e43660259cfb-19dbd12-b57f-7897', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-7c70-e43660259cfb-19dbd12-b57f-7897" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Caballito
+          </a>
+          <div class="prop-addr">Caballito, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 170.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 5096 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="1000000"
+          data-dist="5252"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-8187-789d20336fb-19d3735-bb2e-77c8', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-8187-789d20336fb-19d3735-bb2e-77c8" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Villa General Mitre
+          </a>
+          <div class="prop-addr">Villa General Mitre, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 1.000.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 5252 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="320000"
+          data-dist="5349"
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-doble-en-alquiler-nunez!-grecia-4566-capital-43302869.html?n_src=Listado&n_pg=1&n_pos=3', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-doble-en-alquiler-nunez!-grecia-4566-capital-43302869.html?n_src=Listado&n_pg=1&n_pos=3" target="_blank" onclick="event.stopPropagation()">
+            Cochera doble disponibles en alquiler en el barrio de Nuñez a dos cuadras de Av. Libertador y Grl. Paz, a cinco de Av. Cabildo! Expensas incluidas en el precio! Ideal para auto Y moto
+          </a>
+          <div class="prop-addr">Grecia 4566, Núñez, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 320.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 5349 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="170000"
+          data-dist="5607"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-6278-b79208c52eaa-19c9ca2-a9d8-70b1', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-6278-b79208c52eaa-19c9ca2-a9d8-70b1" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Villa Urquiza
+          </a>
+          <div class="prop-addr">Villa Urquiza, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 170.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 5607 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="180000"
+          data-dist="5607"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-94f8-afae6bb5c838-19db03f-b902-71da', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-94f8-afae6bb5c838-19db03f-b902-71da" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Villa Urquiza
+          </a>
+          <div class="prop-addr">Villa Urquiza, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 180.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 5607 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="175000"
+          data-dist="6109"
+          data-suv="no"
+          onclick="window.open('https://www.argenprop.com/cochera-en-alquiler-en-belgrano--11448382', '_blank')">
+        <td>
+          <span class="badge-portal badge-argenprop">Argenprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.argenprop.com/cochera-en-alquiler-en-belgrano--11448382" target="_blank" onclick="event.stopPropagation()">
+            Cochera en Alquiler en Belgrano, Capital Federal
+          </a>
+          <div class="prop-addr">D Paroissien 2500</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 175.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 6109 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="130000"
+          data-dist="6501"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-61c0-762f0ffc6c34-19cef18-8623-7519', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-61c0-762f0ffc6c34-19cef18-8623-7519" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Villa del Parque
+          </a>
+          <div class="prop-addr">Villa del Parque, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 130.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 6501 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="150000"
+          data-dist="6501"
+          data-suv="no"
+          onclick="window.open('https://www.properati.com.ar/detalle/14032-32-a6cc-539c71906729-19c076a-92e7-74e1', '_blank')">
+        <td>
+          <span class="badge-portal badge-properati">Properati</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.properati.com.ar/detalle/14032-32-a6cc-539c71906729-19c076a-92e7-74e1" target="_blank" onclick="event.stopPropagation()">
+            Garaje en Alquiler en Villa del Parque
+          </a>
+          <div class="prop-addr">Villa del Parque, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 150.000
+          </div>
+        </td>
+        <td>
+          
+            
+              <span class="dist-pill far">📍 6501 m</span>
+            
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="300"
+          data-dist=""
+          data-suv="si"
+          onclick="window.open('https://inmueble.mercadolibre.com.ar/MLA-1772076181-cochera-acceso-directo-en-planta-baja-apto-camioneta-seguridad-24hs-a-30m-de-cabildo-sin-expensas-_JM#polycard_client=search-desktop&float_highlight=recent_publication&price_drop=not_apply&be_origin=backend&search_layout=grid&position=16&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a', '_blank')">
+        <td>
+          <span class="badge-portal badge-mercadolibre">MercadoLibre</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://inmueble.mercadolibre.com.ar/MLA-1772076181-cochera-acceso-directo-en-planta-baja-apto-camioneta-seguridad-24hs-a-30m-de-cabildo-sin-expensas-_JM#polycard_client=search-desktop&float_highlight=recent_publication&price_drop=not_apply&be_origin=backend&search_layout=grid&position=16&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a" target="_blank" onclick="event.stopPropagation()">
+            Cochera Acceso Directo En Planta Baja. Apto Camioneta. Seguridad 24hs. A 30m De Cabildo. Sin Expensas
+          </a>
+          <div class="prop-addr">Manuel Ugarte 2348, C1428 Comuna 13, Cdad. Autónoma De Buenos Aires, Argentina, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            300 pesos argentinos
+          </div>
+        </td>
+        <td>
+          
+            <span class="dist-pill unknown">— m</span>
+          
+        </td>
+        <td><span class="badge-suv">SUV</span></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="100000"
+          data-dist=""
+          data-suv="no"
+          onclick="window.open('https://inmueble.mercadolibre.com.ar/MLA-3163122780-alquilo-cochera-fija-y-cubierta-belgrano-para-moto-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=10&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply', '_blank')">
+        <td>
+          <span class="badge-portal badge-mercadolibre">MercadoLibre</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://inmueble.mercadolibre.com.ar/MLA-3163122780-alquilo-cochera-fija-y-cubierta-belgrano-para-moto-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=10&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply" target="_blank" onclick="event.stopPropagation()">
+            Alquilo Cochera Fija Y Cubierta Belgrano Para Moto
+          </a>
+          <div class="prop-addr">Calle Ciudad De La Paz 2137, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            100000 pesos argentinos
+          </div>
+        </td>
+        <td>
+          
+            <span class="dist-pill unknown">— m</span>
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="110000"
+          data-dist=""
+          data-suv="si"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-en-belgrano-58789367.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=9', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-en-belgrano-58789367.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=9" target="_blank" onclick="event.stopPropagation()">
+            Cocheras en excelente ubicación Alquiler / VentaSe ofrecen cocheras ubicadas en edificio sobre calle Laprida 1980, en una zona estratégica y de fácil acceso. Disponibilidad: • Piso 6: Cocheras N° 137 y 138• Piso 7: Cocheras N° 141, 142, 143, 144 y 145• Cochera 145 actualmente alquiladaMedidas: • Altura: 2 metros• Ancho: 3 metros• Largo: 4, 5 metrosValores: • Alquiler: $110. 000• Venta: usd 11. 000Gastos y servicios: • Expensas: monto a confirmar (incluyen luz) • abl: $6. 000Seguridad: • Servicio de vigilancia de lunes a viernes de 8: 00 a 14: 00 hsExcelente oportunidad tanto para inversión como para uso propio, en una ubicación con alta demanda de estacionamiento. Contacto: China Simancas11 Ver datosMartillero Agustín Stransky
+          </a>
+          <div class="prop-addr">Laprida 1900, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 110.000
+          </div>
+        </td>
+        <td>
+          
+            <span class="dist-pill unknown">— m</span>
+          
+        </td>
+        <td><span class="badge-suv">SUV</span></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="170000"
+          data-dist=""
+          data-suv="no"
+          onclick="window.open('https://inmueble.mercadolibre.com.ar/MLA-1748574179-cochera-amplia-cubierta-dueno-belgrano-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=9&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply', '_blank')">
+        <td>
+          <span class="badge-portal badge-mercadolibre">MercadoLibre</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://inmueble.mercadolibre.com.ar/MLA-1748574179-cochera-amplia-cubierta-dueno-belgrano-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=9&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply" target="_blank" onclick="event.stopPropagation()">
+            Cochera Amplia Cubierta Dueño Belgrano
+          </a>
+          <div class="prop-addr">José Hernandez Vidal SN, Belgrano, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            170000 pesos argentinos
+          </div>
+        </td>
+        <td>
+          
+            <span class="dist-pill unknown">— m</span>
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="200000"
+          data-dist=""
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera.-costa-rica-al-5500-58452612.html?n_src=Listado&n_pg=1&n_pos=13', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera.-costa-rica-al-5500-58452612.html?n_src=Listado&n_pg=1&n_pos=13" target="_blank" onclick="event.stopPropagation()">
+            ¡cochera en alquiler, en palermo! Excelente cochera en alquiler, acceso por portón automático, en planta baja, fija Y cubierta, gran espacio para maniobrar. En excelente ubicación A dos cuadras de av. Juan B justo Y A seis cuadras de av, cordoba. "Se deja expresa constancia que el valor consignado de expensas queda sujeto a variación yo ajustes y que las medidas de los ambientes son orientativas, las reales surgirán del título de propiedad correspondiente" fotos de carácter no contractual. xintel(ber-ber-Ver datos)
+          </a>
+          <div class="prop-addr">COSTA RICA 5575. Fitz Roy Humboldt, Palermo, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 200.000
+          </div>
+        </td>
+        <td>
+          
+            <span class="dist-pill unknown">— m</span>
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="200000"
+          data-dist=""
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-las-canitas-58907614.html?n_src=Listado&n_pg=1&n_pos=18', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-las-canitas-58907614.html?n_src=Listado&n_pg=1&n_pos=18" target="_blank" onclick="event.stopPropagation()">
+            Cochera fija para moto en 1º subsuelo por rampa. Portón eléctricoUna moto $100. 000. -Dos motos $200. 000. -marcelo candel propiedadesitalia 202lomas de zamoraVer datos/ Ver datosWhatsApp +54 11 Ver datosConsultas de Lunes a viernes de 10 a 17. 30: //www. marcelocandel. com. ar/
+          </a>
+          <div class="prop-addr">Migueletes 800 Cochera Para Motos, Las Cañitas, Palermo</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 200.000
+          </div>
+        </td>
+        <td>
+          
+            <span class="dist-pill unknown">— m</span>
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="220000"
+          data-dist=""
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-cochera-doble-en-beruti-y-godoy-cruz-57949802.html?n_src=Listado&n_pg=1&n_pos=10', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-cochera-doble-en-beruti-y-godoy-cruz-57949802.html?n_src=Listado&n_pg=1&n_pos=10" target="_blank" onclick="event.stopPropagation()">
+            Alquiler de Cochera Doble en planta baja en Palermo Nuevo. Una es techada y la otra no. Los autos deben estacionarse uno delante del otro. Ideal autos medianos. La misma se ubica sobre Beruti entre Godoy Cruz y Oro. Se accede a la misma abriendo el portón con control remoto.
+          </a>
+          <div class="prop-addr">Cochera Doble en Alquiler Sobre Beruti Godoy Cruz Oro., Palermo Nuevo, Palermo</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 220.000
+$ 22.000 Expensas
+          </div>
+        </td>
+        <td>
+          
+            <span class="dist-pill unknown">— m</span>
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="220000"
+          data-dist=""
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-en-alquiler-en-palermo-58689548.html?n_src=Listado&n_pg=1&n_pos=15', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-en-alquiler-en-palermo-58689548.html?n_src=Listado&n_pg=1&n_pos=15" target="_blank" onclick="event.stopPropagation()">
+            Cochera en alquiler ubicada en la vibrante zona de Palermo Soho, ideal para quienes buscan seguridad y comodidad para su vehículo. Con una superficie construida de 15 m², esta cochera cubierta ofrece acceso para personas con movilidad reducida. Ubicada en el tercer subsuelo de un edificio con 25 años de antigüedad, brindando así protección y facilidad contra las inclemencias del tiempo.
+          </a>
+          <div class="prop-addr">Vidt 1942, Palermo Soho, Palermo</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 220.000
+          </div>
+        </td>
+        <td>
+          
+            <span class="dist-pill unknown">— m</span>
+          
+        </td>
+        <td></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="270000"
+          data-dist=""
+          data-suv="si"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-en-alquiler-12-m-sup2--palermo-58910456.html?n_src=Listado&n_pg=1&n_pos=11', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-en-alquiler-12-m-sup2--palermo-58910456.html?n_src=Listado&n_pg=1&n_pos=11" target="_blank" onclick="event.stopPropagation()">
+            _ Cochera cubierta en alquiler ubicada sobre calle Teodoro García entre 3 de Febrero y Avenida Cabildo (Palermo, Ciudad Autónoma de Buenos Aires). Desarrollada en una planta, con disposición interna y orientación al suroeste. _ La propiedad tiene una superficie total de aproximadamente 12mts2 cubiertos. Yacoub | Construimos ConfianzaInnovación | Calidad | Sustentabilidad | Diseño70 Mil Metros Cuadrados | 23 TorresLa información descripta en el presente aviso es meramente orientativa y no forma parte de ningún tipo de documentación contractual. Los datos enunciados fueron proporcionados por los propietarios y pueden arrojar inexactitudes, las superficies definitivas surgirán del título de propiedad del inmueble referido. Se deja constancia de que los valores y/o expensas pueden estar sujetas a verificación o ajuste. Lo que estás buscando lo tenemos | Estés Donde EstésVendemos en Todos Lados.
+          </a>
+          <div class="prop-addr">Teodoro García e/ 3 de Febrero Avenida Cabildo, Palermo, Capital Federal</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 270.000
+          </div>
+        </td>
+        <td>
+          
+            <span class="dist-pill unknown">— m</span>
+          
+        </td>
+        <td><span class="badge-suv">SUV</span></td>
+      </tr>
+      
+      <tr class="prop-row"
+          data-precio="400000"
+          data-dist=""
+          data-suv="no"
+          onclick="window.open('https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-cochera-doble-cubierta-nunez-58547105.html?n_src=Listado&n_pg=1&n_pos=5', '_blank')">
+        <td>
+          <span class="badge-portal badge-zonaprop">Zonaprop</span>
+        </td>
+        <td class="prop-title">
+          <a href="https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-cochera-doble-cubierta-nunez-58547105.html?n_src=Listado&n_pg=1&n_pos=5" target="_blank" onclick="event.stopPropagation()">
+            Cochera en alquiler ubicada en Lomas de Núñez, ideal para quienes buscan seguridad y comodidad para su vehículo. Cuenta con una superficie de 25 m² y acceso para personas con movilidad reducida. La cochera es cubierta, protegiendo el vehículo de las inclemencias del tiempo. Ubicada en una zona residencial tranquila, con fácil acceso a las principales avenidas de Lomas de Núñez.
+          </a>
+          <div class="prop-addr">Ruiz Huidobro 1917, Lomas de Núñez, Núñez</div>
+        </td>
+        <td>
+          <div class="prop-price ">
+            $ 400.000
+          </div>
+        </td>
+        <td>
+          
+            <span class="dist-pill unknown">— m</span>
+          
+        </td>
+        <td></td>
+      </tr>
+      
+    </tbody>
+  </table>
+  <div id="noResults" class="no-results" style="display:none">
+    <h3>Sin resultados</h3>
+    <p>Probá ajustando los filtros.</p>
+  </div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const REF_LAT = -34.5756717;
+const REF_LON = -58.4302997;
+const MARKERS = [{"lat": -34.5787618, "lon": -58.4319228, "titulo": "Alquiler de excelente espacio en subsuelo con capacidad para guardar Y circulacion de vehiculos. Paraguay 5300, Palermo Hollywood. Excelente oportunidad en Palermo. Ubicado sobre la calle Paraguay al 5300, en pleno corazón de Palermo Hollywood, se encuentra este amplio espacio de 400 metros de cocheras subterráneas y una baulera. Ubicación estratégica, rodeado de comercios, edificios residenciales y con excelente conectividad. La. El inmueble cuenta con accesibilidad para personas con movilidad reducida (Ley 5115) cmcpsi 6202 cucicba 7746. Nota importante: Las imágenes en este anuncio son meramente ilustrativas no teniendo carácter contractual. El importe de expensas e impuestos anunciados ha sido extraído de la facturación y documentación aportada por el propietario, siendo orientativo y no vinculante, encontrándose sujeto a variaciones sin previa publicidad. Las medidas aportadas en esta publicación son aproximadas y a título informativo. La medida original surgirá de los respectivos planos yo escritura del inmueble.", "precio": "USD 2.200", "distancia_m": 374, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-de-cocheras-en-palermo-56264939.html?n_src=Listado&n_pg=1&n_pos=6", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5787618, "lon": -58.4319228, "titulo": "Alquiler en bloque cocheras en subsuelo con bauleras-oportunidad bajas expensas!!. Palermo Hollywood | Acceso independiente. Se ofrece alquiler en bloque un amplio sector de cocheras en subsuelo, ubicadas dentro de edificio sobre la calle Paraguay 5300 (entre Bonpland y Carranza), en una de las zonas más demandadas de Palermo Hollywood. El espacio cuenta con una superficie total aproximada de346 m², destinado a cocheras/guardacoches, con ingreso vehicular mediante portón independiente, lo que garantiza operatividad, seguridad y privacidad. El conjunto se complementa con dos bauleras de 11 m² y 32 m², ambas con puertas privadas, totalmente independientes de las áreas comunes y del ingreso al edificio, ideales para depósito, guardado o uso logístico. En cumplimiento de las leyes vigentes que regulan el corretaje inmobiliario, Ley Nacional 25. 028, Ley 2. 340, Ley 10. 973, Ley 24. 240 de Defensa al Consumidor, las normas del Código Civil y Comercial de la Nación y Constitucionales, los agentes/gestores no ejercen el corretaje inmobiliario. Todas las operaciones inmobiliarias son objeto de intermediación y conclusión por parte del corredor público inmobiliario colegiado a cargo de la publicación, cuyos datos se exhiben en la presente. Corredor Responsable: Diego Mastrangelo cucicba 7615 csi 6609- Contacto: Jose Luis Caputo Olivera. - kpVer datos - kptVer datos- - Publicado usando KiteProp crm Inmobiliario", "precio": "USD 2.200\n$ 200.000 Expensas", "distancia_m": 374, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-en-bloque-cocheras.-palermo-hollywood-58580824.html?n_src=Listado&n_pg=1&n_pos=9", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5706184, "lon": -58.4323788, "titulo": "Garaje en Alquiler en Las Cañitas", "precio": "$ 100.000", "distancia_m": 593, "url": "https://www.properati.com.ar/detalle/14032-32-cc4f-848858fc0cfe-19d4308-ae9a-7b53", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5706184, "lon": -58.4323788, "titulo": "Garaje en Alquiler en Las Cañitas", "precio": "$ 200.000", "distancia_m": 593, "url": "https://www.properati.com.ar/detalle/14032-32-d67c-c161d1d6642d-19db2da-9d0b-7f61", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5816985, "lon": -58.4344985, "titulo": "Garaje en Alquiler en Palermo Hollywood", "precio": "USD 1.800", "distancia_m": 772, "url": "https://www.properati.com.ar/detalle/14032-32-8c0d-220b4ca69ff5-19dddb2-81ec-76db", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5816985, "lon": -58.4344985, "titulo": "Garaje en Alquiler en Palermo Hollywood", "precio": "$ 150.000", "distancia_m": 772, "url": "https://www.properati.com.ar/detalle/14032-32-5604-9abbfc20c6d1-19d4bdf-b626-7060", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5816985, "lon": -58.4344985, "titulo": "Garaje en Alquiler en Palermo Hollywood", "precio": "$ 230.000", "distancia_m": 772, "url": "https://www.properati.com.ar/detalle/14032-32-44b8-2cf60ae6037c-19d7524-8b46-7385", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5831332, "lon": -58.434221, "titulo": "Cochera cubierta en Costa Rica y Fitz Roy. Planta completa de cocheras en pleno corazón de Palermo Hollywood. A metros de las principales emisoras y productoras de televisión, y los mejores restaurantes. Todas las unidades funcionales del edificio son oficinas comerciales, con un local comercial en la planta baja. Vigilancia las 24 hs. Nota: Las medidas, superficies y expensas consignadas en la presente son aproximadas; y al solo efecto orientativo. Los datos definitivos son los que surgirán del titulo de la propiedad y de los comprobantes respaldatorios. Visitar únicamente con personal de la firma previa coordinación de cita. Para más información comunicarse a los teléfonos: Ver datos. Ver datos. Ver datos. \"next management S. A. \" Matrícula cucicba 804.", "precio": "$ 200.000", "distancia_m": 904, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-costa-rica-5546-palermo-hollywood-palermo-22138191.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=16", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5782647, "lon": -58.4412837, "titulo": "Solamente para ser alquilada para habitantes del complejo concepcion, conesa Y concepcion arenal, cochera fija en el segundo subsuelo. Ingreso automatizado. Vigilancia 24 hs Y camara en las plantas.", "precio": "$ 200.000", "distancia_m": 1046, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-para-exclusivamente-habitantes-complejo-53727875.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=7", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5830637, "lon": -58.421894, "titulo": "Palermo, Cochera fija y cubierta. Para auto muy chico o motoA dos cuadras de Plaza Italia. Cochera en Subsuelo Consúltenos para mayor información. &quot;Para los casos de alquiler de vivienda, el monto máximo de comisión que se le puede requerir a los propietarios será el equivalente al cuatro con quince centésimos por ciento (4, 15%) del valor total del respectivo contrato. Se encuentra prohibido cobrar a los inquilinos que sean personas físicas comisiones inmobiliarias y gastos de gestoría de informes&quot;. -• Las medidas son aproximadas, las exactas surgen de la escritura traslativa de dominio. • El valor de las expensas corresponde al último mes en curso, las mismas podrán sufrir modificaciones de acuerdo el respectivo consorcio.", "precio": "$ 100.000", "distancia_m": 1125, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-botanico-58698535.html?n_src=Listado&n_pg=1&n_pos=8", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5870582, "lon": -58.428178, "titulo": "Garaje en Alquiler en Palermo Soho", "precio": "$ 100.000", "distancia_m": 1280, "url": "https://www.properati.com.ar/detalle/14032-32-5678-93d512aac922-19d321f-b744-79ed", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5870582, "lon": -58.428178, "titulo": "Garaje en Alquiler en Palermo Soho", "precio": "$ 190.000", "distancia_m": 1280, "url": "https://www.properati.com.ar/detalle/14032-32-df46-b154e72b822c-19dbf05-af5c-7d90", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5841512, "lon": -58.4431823, "titulo": "Alquiler de Cochera en Palermo, Capital Federal. aviso de alquiler. lepore propiedades T. Ver datos C. 11 Ver datos. lepore Propiedades S. A. Cuit: Ver datos-9 C. U. C. I. C. B. A. Matrícula Nº 931 (Sucursales Caballito - Palermo - Centro) aviso legal: Las descripciones arquitectónicas y funcionales, valores de expensas yo gastos comunes, impuestos y servicios, fotos y medidas de este inmueble son aproximados. Los datos fueron proporcionados por el propietario y pueden no estar actualizados a la hora de la visualización de este aviso por lo cual pueden arrojar inexactitudes y discordancias con las que surgen de las facturas, títulos y planos legales del inmueble. El interesado deberá realizar las verificaciones respectivas con carácter previo a la realización de cualquier operación, requiriendo por sí o sus profesionales de confianza las copias necesarias de la documentación que corresponda. Se encuentra prohibido cobrar comisiones inmobiliarias y gastos de gestoría de informes a los inquilinos que sean personas físicas. Para los casos de alquiler de vivienda, el monto máximo de comisión que se le puede requerir a los propietarios será el equivalente al cuatro con quince centésimos por ciento (4, 15%) del valor total del respectivo contrato (conf. El Art. 4 de la Ley 5. 859 de C. A. B. A) Propiedad según Ley 5115 La accesibilidad para las personas con discapacidades físicas. \"accesible\"xintel(lep-le1-Ver datos)", "precio": "$ 139.000", "distancia_m": 1509, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera.-niceto-vega-al-5900-58459334.html?n_src=Listado&n_pg=1&n_pos=12", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5887904, "lon": -58.4252366, "titulo": "Garaje en Alquiler en Palermo Viejo", "precio": "$ 2.350", "distancia_m": 1530, "url": "https://www.properati.com.ar/detalle/14032-32-3f2c-b86fb2c6a6cb-409f4a22-a2c8-32f7", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5677926, "lon": -58.4442088, "titulo": "Alquiler de cochera en 2do subsuelo teodoro garcia 2261 belgrano. excelente ubicacion. 150. 000 actualizacion trimestral. expensas 110. 000 aproximadamente", "precio": "$ 150.000\n$ 110.000 Expensas", "distancia_m": 1545, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-en-alquiler-excelente-ubicacion-57645359.html?n_src=Listado&n_pg=1&n_pos=4", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5703941, "lon": -58.4479549, "titulo": "Excelente cochera fija en belgrano", "precio": "$ 230.000", "distancia_m": 1719, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-excelente-cochera-fija-individual-58808311.html?n_src=Listado&n_pg=1&n_pos=14", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5936101, "lon": -58.427468, "titulo": "Alquiler de cochera en Palermo, cuenta con portón automático, ubicado en una zona de mucha demanda de cocheras. El precio no incluye las expensas, servicios e impuestos que se pagan a parte. Se paga el primer mes por adelantado. Un mes depósito adelantado a cuenta del último mes. Honorarios inmobiliarios.", "precio": "$ 140.000\n$ 62.000 Expensas", "distancia_m": 2011, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-de-cochera-en-palermo-58849321.html?n_src=Listado&n_pg=1&n_pos=17", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5638687, "lon": -58.4523066, "titulo": "Se alquila cochera fija cubierta pequeña (un auto chico o dos motos) en zona de Belgrano. Seguridad 24 hs. La cochera está ubicada en el tercer subsuelo, cuenta con amplias rampas y buen radio de giro. Inmejorable ubicación a pasos del Paseo del Ángel y a dos cuadras de Cabildo. Contrato Temporario cada 3 meses actualización por ipc. Expensas $20. 000. - Se deja constancia que las medidas, superficies, metros cuadrados y proporciones consignadas son aproximados, está sujeto a verificación y/o ajuste. El precio del inmueble puede ser modificado sin previo aviso. Fotos de carácter no contractual. *Esta propiedad no posee rampa de acceso para personas con movilidad reducida. *Matrícula cucicba 7445", "precio": "$ 120.000\n$ 20.000 Expensas", "distancia_m": 2404, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquila-cochera-pequena.-cuba-1800.-belgrano.-58812458.html?n_src=Listado&n_pg=1&n_pos=5", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5638687, "lon": -58.4523066, "titulo": "Cochera en Alquiler en Belgrano, Capital Federal", "precio": "$ 120.000", "distancia_m": 2404, "url": "https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19396802", "fuente": "Argenprop", "apto_suv": false}, {"lat": -34.5672636, "lon": -58.4561399, "titulo": "Venta cochera fija Y cubierta en belgranoopcion alquileredificio de cocheras ubicado sobre jose hernandez, entre las calles moldes y vidalcochera muy cómodaacceso por rampasingreso con control remotovigilanciaexcelente ubicacionbuenos accesosse deja constancia que los metros parciales, así como el monto de las expensas e impuestos son aproximados a título orientativo sujetos a verificación y/o ajustes. cucicba N° 6600", "precio": "$ 60.000\n$ 32.000 Expensas", "distancia_m": 2543, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-venta-de-cochera-fija-en-belgrano-54692212.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=8", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5655662, "lon": -58.4552259, "titulo": "Excelente cochera fija en belgrano", "precio": "$ 230.000", "distancia_m": 2543, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-excelente-cochera-fija-individual-58798167.html?n_src=Listado&n_pg=1&n_pos=7", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5655662, "lon": -58.4552259, "titulo": "Cochera en Alquiler en Belgrano, Capital Federal", "precio": "$ 230.000", "distancia_m": 2543, "url": "https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19385026", "fuente": "Argenprop", "apto_suv": false}, {"lat": -34.5655662, "lon": -58.4552259, "titulo": "Excelente Cochera Fija Individual", "precio": "230000 pesos argentinos", "distancia_m": 2543, "url": "https://inmueble.mercadolibre.com.ar/MLA-3164636988-excelente-cochera-fija-individual-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=7&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply", "fuente": "MercadoLibre", "apto_suv": false}, {"lat": -34.5932867, "lon": -58.4480481, "titulo": "Garaje en Alquiler en Villa Crespo", "precio": "$ 145.000", "distancia_m": 2544, "url": "https://www.properati.com.ar/detalle/14032-32-5dd1-bbfa143e5139-19ddc0d-8d74-79fa", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5971393, "lon": -58.420077, "titulo": "Estratégica ubicación - Medrano, entre Gorriti y Honduras. Cocheras cubiertas disponibles en edificio privadoPortón automático Fácil acceso en Planta Baja, sin rampa, sin montacargas El alquiler mensual es de $ 150. 000, incluye todos los gastos", "precio": "$ 150.000", "distancia_m": 2563, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-en-palermo-58909863.html?n_src=Listado&n_pg=1&n_pos=1", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5778295, "lon": -58.4009058, "titulo": "Garaje en Alquiler en Palermo Chico", "precio": "$ 200.000", "distancia_m": 2701, "url": "https://www.properati.com.ar/detalle/14032-32-caf0-d4c0152e324b-19bf7f3-803b-7f4c", "fuente": "Properati", "apto_suv": false}, {"lat": -34.564074, "lon": -58.457626, "titulo": "Alquiler de Cochera en Belgrano – Echeverría al 2600Excelente oportunidad en pleno Belgrano. Cochera ubicada en 2° piso por rampa, dentro de edificio abierto y con seguridad 24 hs, que brinda mayor comodidad y tranquilidad. Características: Expensas: $80. 000. Valor de alquiler: $250. 000. Acceso cómodo por rampa. Ubicación estratégica en Belgrano, a pasos de avenidas principales, comercios y medios de transporte. ¡Consultanos para más información y coordiná tu visita! Facundo orestes vivas real estatemat. N°4034. T° lx F° 4034cmycpdjmecucicba 8616Art. 4 de la ley 5859 y Art. 10 inc. 8 de la ley 2340", "precio": "$ 250.000\n$ 80.000 Expensas", "distancia_m": 2814, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-cochera-rampa-ascensor-vigilancia-58818447.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=4", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.564074, "lon": -58.457626, "titulo": "Cochera en Alquiler en Belgrano, Capital Federal", "precio": "$ 250.000", "distancia_m": 2814, "url": "https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19408249", "fuente": "Argenprop", "apto_suv": false}, {"lat": -34.564074, "lon": -58.457626, "titulo": "Alquiler - Cochera - Rampa - Ascensor - Vigilancia -belgrano - Capital Federal", "precio": "250000 pesos argentinos", "distancia_m": 2814, "url": "https://inmueble.mercadolibre.com.ar/MLA-3174198410-alquiler-cochera-rampa-ascensor-vigilancia-belgrano-capital-federal-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=6&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply", "fuente": "MercadoLibre", "apto_suv": false}, {"lat": -34.5551652, "lon": -58.4509705, "titulo": "Cochera En El 2do Subsuelo. Seguridad Las 24hs Del Dia. Se Encuentra Exactamente En Frente Al Sanatorio Fleni", "precio": "260000 pesos argentinos", "distancia_m": 2963, "url": "https://inmueble.mercadolibre.com.ar/MLA-1758775229-cochera-en-el-2do-subsuelo-seguridad-las-24hs-del-dia-se-encuentra-exactamente-en-frente-al-sanatorio-fleni-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=15&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply", "fuente": "MercadoLibre", "apto_suv": false}, {"lat": -34.5550301, "lon": -58.4510387, "titulo": "Montañeses y B. Encalada cocheras en venta frente al Fleni, abierto 24hs primer subsuelo excelente ubicación.", "precio": "USD 30.000\n$ 50.000 Expensas", "distancia_m": 2978, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-montaneses-y-b.-encalada-cocheras-en-venta-frente-al-53905241.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=10", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5885432, "lon": -58.401096, "titulo": "Cochera en Alquiler en Belgrano, Capital Federal", "precio": "$ 110.000", "distancia_m": 3032, "url": "https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19470442", "fuente": "Argenprop", "apto_suv": false}, {"lat": -34.5562633, "lon": -58.4543184, "titulo": "Cochera Descubierta Terraza Garaje Privado En Belgrano!!", "precio": "150000 pesos argentinos", "distancia_m": 3081, "url": "https://inmueble.mercadolibre.com.ar/MLA-1742478701-cochera-descubierta-terraza-garaje-privado-en-belgrano-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=13&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply", "fuente": "MercadoLibre", "apto_suv": false}, {"lat": -34.5628186, "lon": -58.4602676, "titulo": "Cochera fija para auto mediano cubierta. porton automatico. el precio incluye expensas. espacio para girar en el fondo", "precio": "$ 140.000", "distancia_m": 3093, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-cub.-belgrano-58983829.html?n_src=Listado&n_pg=1&n_pos=1", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5628186, "lon": -58.4602676, "titulo": "Cochera en Alquiler en Belgrano, Capital Federal", "precio": "$ 140.000", "distancia_m": 3093, "url": "https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19549803", "fuente": "Argenprop", "apto_suv": false}, {"lat": -34.5628186, "lon": -58.4602676, "titulo": "Cochera Cub. Belgrano", "precio": "140000 pesos argentinos", "distancia_m": 3093, "url": "https://inmueble.mercadolibre.com.ar/MLA-3249957136-cochera-cub-belgrano-_JM#polycard_client=search-desktop&float_highlight=recent_publication&price_drop=not_apply&be_origin=backend&search_layout=grid&position=5&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a", "fuente": "MercadoLibre", "apto_suv": false}, {"lat": -34.5607328, "lon": -58.4591782, "titulo": "Cochera en Alquiler en Belgrano, Capital Federal", "precio": "$ 60.000", "distancia_m": 3122, "url": "https://www.argenprop.com/cochera-en-alquiler-en-belgrano--18334792", "fuente": "Argenprop", "apto_suv": false}, {"lat": -34.560576, "lon": -58.4594063, "titulo": "Dueño alquila cochera en Ciudad de La Paz al 2900 expensas incluidas. Superficie Alrededor de 12 mt2. Estacionamiento 24hs. Actualizacion semestral segun ipc..", "precio": "$ 150.000", "distancia_m": 3149, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgapa-150.000-cochera-ciudad-de-la-oaz-al-2900-58788302.html?n_src=Listado&n_pg=1&n_pos=11", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5612448, "lon": -58.4600547, "titulo": "Cochera en alquiler en Belgrano – Olazábal 2600Amplia cochera ubicada en el 3° piso por rampa, dentro de un edificio moderno y seguro. Cuenta con excelente acceso y comodidad de maniobra, ideal para uso diario. El edificio dispone de dos ascensores para personas, control remoto para ingreso y salida, y vigilancia las 24 horas, brindando seguridad y practicidad. Valor de alquiler: $250. 000Expensas: $75. 000Ubicada en una de las zonas más buscadas de Belgrano, con excelente conectividad y accesos. ¡No dejes pasar esta oportunidad! Contactanos para más información o para coordinar una visita. Facundo orestes vivas real estatemat. N°4034. T° lx F° 4034cmycpdjmecucicba 8616Art. 4 de la ley 5859 y Art. 10 inc. 8 de la ley 2340", "precio": "$ 250.000\n$ 75.000 Expensas", "distancia_m": 3161, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-alquiler-cochera-tercer-piso-rampa-belgrano-58818418.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=3", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5612448, "lon": -58.4600547, "titulo": "Cochera en Alquiler en Belgrano, Capital Federal", "precio": "$ 250.000", "distancia_m": 3161, "url": "https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19407377", "fuente": "Argenprop", "apto_suv": false}, {"lat": -34.5927233, "lon": -58.4023659, "titulo": "Garaje en Alquiler en Barrio Norte", "precio": "$ 150.000", "distancia_m": 3183, "url": "https://www.properati.com.ar/detalle/14032-32-e368-ca7325bb36db-19db2ea-a250-7aab", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5927233, "lon": -58.4023659, "titulo": "Garaje en Alquiler en Barrio Norte", "precio": "$ 170.000", "distancia_m": 3183, "url": "https://www.properati.com.ar/detalle/14032-32-fe2c-5af9e7c6eace-19bfa89-b465-70e2", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5927233, "lon": -58.4023659, "titulo": "Garaje en Alquiler en Barrio Norte", "precio": "$ 180.000", "distancia_m": 3183, "url": "https://www.properati.com.ar/detalle/14032-32-b617-3540e68fe62c-19d4be3-b09c-7328", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5927233, "lon": -58.4023659, "titulo": "Garaje en Alquiler en Barrio Norte", "precio": "$ 240.000", "distancia_m": 3183, "url": "https://www.properati.com.ar/detalle/14032-32-87f6-cd22eaef8539-19d9ffc-89da-70f1", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5615632, "lon": -58.4605608, "titulo": "Alquilo Cochera Cubierta En 2do Piso Por Rampa Fija", "precio": "180000 pesos argentinos", "distancia_m": 3184, "url": "https://inmueble.mercadolibre.com.ar/MLA-3236134292-alquilo-cochera-cubierta-en-2do-piso-por-rampa-fija-_JM#polycard_client=search-desktop&float_highlight=recent_publication&price_drop=not_apply&be_origin=backend&search_layout=grid&position=8&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a", "fuente": "MercadoLibre", "apto_suv": false}, {"lat": -34.5602372, "lon": -58.4596099, "titulo": "Exelentes Cocheras Fijas En Venta O Alquiler Primer Subsuelo Gastos Incluidos Precio", "precio": "190000 pesos argentinos", "distancia_m": 3185, "url": "https://inmueble.mercadolibre.com.ar/MLA-3148262786-exelentes-cocheras-fijas-en-venta-o-alquiler-primer-subsuelo-gastos-incluidos-precio-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=3&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply", "fuente": "MercadoLibre", "apto_suv": false}, {"lat": -34.5580934, "lon": -58.4584786, "titulo": "Cochera En Subsuelo. Fácil Acceso. Seguridad", "precio": "250000 pesos argentinos", "distancia_m": 3236, "url": "https://inmueble.mercadolibre.com.ar/MLA-1755522933-cochera-en-subsuelo-facil-acceso-seguridad-_JM#polycard_client=search-desktop&be_origin=backend&search_layout=grid&position=11&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a&price_drop=not_apply", "fuente": "MercadoLibre", "apto_suv": false}, {"lat": -34.5522557, "lon": -58.4532366, "titulo": "Se alquila cochera fija Y cubierta, en belgrano, se accede por montacarga al subsuelo. Para auto mediano. A metros de libertador. Y monroe. Para entrar en mayo.", "precio": "$ 200.000", "distancia_m": 3345, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-fija-cubierta-montacarga-belgrano-58866574.html?n_src=Listado&n_pg=1&n_pos=2", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5981912, "lon": -58.4549513, "titulo": "Garaje en Alquiler en Distrito Audiovisual", "precio": "$ 15.000", "distancia_m": 3370, "url": "https://www.properati.com.ar/detalle/14032-32-c8e8-b0120f339cb5-19109a6-8cc1-782c", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5981912, "lon": -58.4549513, "titulo": "Garaje en Alquiler en Distrito Audiovisual", "precio": "$ 100.000", "distancia_m": 3370, "url": "https://www.properati.com.ar/detalle/14032-32-7990-641933f4b893-19db2c7-8d97-7433", "fuente": "Properati", "apto_suv": false}, {"lat": -34.6037283, "lon": -58.4125926, "titulo": "Garaje en Alquiler en Abasto", "precio": "$ 100.000", "distancia_m": 3515, "url": "https://www.properati.com.ar/detalle/14032-32-87a3-b08c2dfa4925-19d9585-98b6-7b39", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5610814, "lon": -58.4658307, "titulo": "Cochera Descubierta en Edificio Residencial con Exc. Ubicación. El valor de las Expensas es de $ 38. 000. - (Abril 2026) En cumplimiento con las leyes que regulan el corretaje inmobiliario, todas las operaciones inmobiliarias son objeto de intermediación y conclusión por parte del matriculado, cuyos datos se exhiben. Las medidas, superficies, expensas y antigüedad consignadas en la presente ficha pueden no ser exactas. Los datos definitivos son los que surgen del título de propiedad y de la documentación correspondiente.", "precio": "$ 95.000\n$ 38.000 Expensas", "distancia_m": 3635, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/veclgain-cochera-descubierta-en-edificio-residencial-con-exc-58981920.html?n_src=Listado&n_pg=1&n_pos=6", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5639902, "lon": -58.4691126, "titulo": "Cochera en Alquiler en Belgrano, Capital Federal", "precio": "$ 100.000", "distancia_m": 3783, "url": "https://www.argenprop.com/cochera-en-alquiler-en-belgrano--19424259", "fuente": "Argenprop", "apto_suv": false}, {"lat": -34.5676055, "lon": -58.4708195, "titulo": "Alquilo cochera en 2° piso (individual entre paredes). Valor $ 180. 000. Acceso por rampas fijas y vigilancia las 24 hs. Acceso peatonal por escalera o ascensores.", "precio": "$ 180.000", "distancia_m": 3816, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgapa-alquilo-cochera-cubierta-en-edificio-de-cocheras-58247287.html?n_src=Listado&n_pills=Encargado&n_pg=1&n_pos=12", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5676055, "lon": -58.4708195, "titulo": "Excelente Cochera Autos Con Control Y Acceso", "precio": "200000 pesos argentinos", "distancia_m": 3816, "url": "https://inmueble.mercadolibre.com.ar/MLA-1766520115-excelente-cochera-autos-con-control-y-acceso-_JM#polycard_client=search-desktop&float_highlight=recent_publication&price_drop=not_apply&be_origin=backend&search_layout=grid&position=12&type=item&tracking_id=2a2843f3-406a-4ec7-99a8-bad41f7b7f4a", "fuente": "MercadoLibre", "apto_suv": false}, {"lat": -34.6099883, "lon": -58.4222331, "titulo": "Garaje en Alquiler en Almagro", "precio": "$ 80.000", "distancia_m": 3886, "url": "https://www.properati.com.ar/detalle/14032-32-cde4-1e1b8cc83676-19cd548-8ed0-7bc5", "fuente": "Properati", "apto_suv": false}, {"lat": -34.6099883, "lon": -58.4222331, "titulo": "Garaje en Alquiler en Almagro", "precio": "$ 130.000", "distancia_m": 3886, "url": "https://www.properati.com.ar/detalle/14032-32-6bfa-133fbd242339-19d4e6b-8353-77ac", "fuente": "Properati", "apto_suv": false}, {"lat": -34.6099883, "lon": -58.4222331, "titulo": "Garaje en Alquiler en Almagro", "precio": "$ 150.000", "distancia_m": 3886, "url": "https://www.properati.com.ar/detalle/14032-32-dbd8-10bf9b064b4f-19da88a-b79f-7c70", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5757071, "lon": -58.4815936, "titulo": "Cochera fija N°11El valor del alquiler Incluye expensas e impuestos", "precio": "$ 180.000", "distancia_m": 4696, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-cubierta-58955685.html?n_src=Listado&n_pg=1&n_pos=2", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.6205897, "lon": -58.4413922, "titulo": "Garaje en Alquiler en Caballito", "precio": "$ 170.000", "distancia_m": 5096, "url": "https://www.properati.com.ar/detalle/14032-32-7c70-e43660259cfb-19dbd12-b57f-7897", "fuente": "Properati", "apto_suv": false}, {"lat": -34.6103098, "lon": -58.4693142, "titulo": "Garaje en Alquiler en Villa General Mitre", "precio": "$ 1.000.000", "distancia_m": 5252, "url": "https://www.properati.com.ar/detalle/14032-32-8187-789d20336fb-19d3735-bb2e-77c8", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5394092, "lon": -58.4686914, "titulo": "Cochera doble disponibles en alquiler en el barrio de Nuñez a dos cuadras de Av. Libertador y Grl. Paz, a cinco de Av. Cabildo! Expensas incluidas en el precio! Ideal para auto Y moto", "precio": "$ 320.000", "distancia_m": 5349, "url": "https://www.zonaprop.com.ar/propiedades/clasificado/alclgain-cochera-doble-en-alquiler-nunez!-grecia-4566-capital-43302869.html?n_src=Listado&n_pg=1&n_pos=3", "fuente": "Zonaprop", "apto_suv": false}, {"lat": -34.5732414, "lon": -58.4914785, "titulo": "Garaje en Alquiler en Villa Urquiza", "precio": "$ 170.000", "distancia_m": 5607, "url": "https://www.properati.com.ar/detalle/14032-32-6278-b79208c52eaa-19c9ca2-a9d8-70b1", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5732414, "lon": -58.4914785, "titulo": "Garaje en Alquiler en Villa Urquiza", "precio": "$ 180.000", "distancia_m": 5607, "url": "https://www.properati.com.ar/detalle/14032-32-94f8-afae6bb5c838-19db03f-b902-71da", "fuente": "Properati", "apto_suv": false}, {"lat": -34.5573642, "lon": -58.4932078, "titulo": "Cochera en Alquiler en Belgrano, Capital Federal", "precio": "$ 175.000", "distancia_m": 6109, "url": "https://www.argenprop.com/cochera-en-alquiler-en-belgrano--11448382", "fuente": "Argenprop", "apto_suv": false}, {"lat": -34.6014043, "lon": -58.4940744, "titulo": "Garaje en Alquiler en Villa del Parque", "precio": "$ 130.000", "distancia_m": 6501, "url": "https://www.properati.com.ar/detalle/14032-32-61c0-762f0ffc6c34-19cef18-8623-7519", "fuente": "Properati", "apto_suv": false}, {"lat": -34.6014043, "lon": -58.4940744, "titulo": "Garaje en Alquiler en Villa del Parque", "precio": "$ 150.000", "distancia_m": 6501, "url": "https://www.properati.com.ar/detalle/14032-32-a6cc-539c71906729-19c076a-92e7-74e1", "fuente": "Properati", "apto_suv": false}];
+const PAGE_SIZE = 30;
+
+// ── MAP ──
+const map = L.map('map').setView([REF_LAT, REF_LON], 15);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+L.circle([REF_LAT, REF_LON], {radius: 1000, color: '#1a1a2e', fillOpacity: 0.04, weight: 1.5, dashArray:'6 4'}).addTo(map);
+
+const refIcon = L.divIcon({className:'', html:`<div style="width:22px;height:22px;border-radius:50%;background:#e94560;border:3px solid #fff;box-shadow:0 2px 8px rgba(233,69,96,.5)"></div>`});
+L.marker([REF_LAT, REF_LON], {icon: refIcon}).addTo(map)
+  .bindPopup('<strong style="color:#e94560">📍 Tu referencia</strong><br>Luis María Campos y Teodoro García');
+
+const makeIcon = (dist) => {
+  const color = dist <= 500 ? '#00b894' : dist <= 1000 ? '#fdcb6e' : '#d63031';
+  return L.divIcon({className:'', html:`<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>`});
+};
+
+MARKERS.forEach(m => {
+  const icon = makeIcon(m.distancia_m || 99999);
+  const suv = m.apto_suv ? '<br><span style="color:#00b894;font-weight:700;font-size:.8em">✓ Apto SUV</span>' : '';
+  const dist = m.distancia_m ? `<br><span style="color:#636e72;font-size:.8em">${m.distancia_m} m del punto de referencia</span>` : '';
+  L.marker([m.lat, m.lon], {icon})
+    .addTo(map)
+    .bindPopup(`
+      <div style="font-family:Inter,sans-serif;min-width:200px">
+        <div style="font-size:.7em;font-weight:700;text-transform:uppercase;color:#636e72;margin-bottom:4px">${m.fuente}</div>
+        <strong><a href="${m.url}" target="_blank" style="color:#1a1a2e;text-decoration:none">${m.titulo || 'Ver aviso'}</a></strong>
+        <div style="font-size:1.1em;font-weight:700;color:#00b894;margin-top:4px">${m.precio}</div>
+        ${dist}${suv}
+      </div>
+    `);
+});
+
+// ── FILTERING & SORTING ──
+const tbody = document.getElementById('tbody');
+let allRows = Array.from(tbody.querySelectorAll('tr.prop-row'));
+let currentPage = 1;
+let sortCol = 3, sortDir = 1;
+let filterState = { suv: false, km: false };
+
+function getRows() {
+  const maxP = parseFloat(document.getElementById('maxPrecio').value) || Infinity;
+  const maxD = parseFloat(document.getElementById('maxDist').value) || Infinity;
+
+  return allRows.filter(row => {
+    const precio = parseFloat(row.dataset.precio) || 0;
+    const dist   = parseFloat(row.dataset.dist) || Infinity;
+    const suv    = row.dataset.suv === 'si';
+    if (maxP < Infinity && precio > maxP && precio > 0) return false;
+    if (maxD < Infinity && dist > maxD) return false;
+    if (filterState.suv && !suv) return false;
+    if (filterState.km && dist > 1000) return false;
+    return true;
+  });
+}
+
+function renderPage(rows) {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const visible = rows.slice(start, start + PAGE_SIZE);
+  allRows.forEach(r => r.style.display = 'none');
+  visible.forEach(r => r.style.display = '');
+  document.getElementById('countVisible').textContent = rows.length;
+  document.getElementById('noResults').style.display = rows.length === 0 ? 'block' : 'none';
+  renderPagination(rows.length);
+}
+
+function renderPagination(total) {
+  const pages = Math.ceil(total / PAGE_SIZE);
+  const pag = document.getElementById('pagination');
+  pag.innerHTML = '';
+  if (pages <= 1) return;
+  for (let i = 1; i <= pages; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+    btn.textContent = i;
+    btn.onclick = () => { currentPage = i; applyFilters(); };
+    pag.appendChild(btn);
+  }
+}
+
+function applyFilters() {
+  const rows = getRows();
+  rows.sort((a, b) => {
+    let va, vb;
+    if (sortCol === 2) {
+      va = parseFloat(a.dataset.precio) || 999999999;
+      vb = parseFloat(b.dataset.precio) || 999999999;
+    } else if (sortCol === 3) {
+      va = parseFloat(a.dataset.dist) || 999999;
+      vb = parseFloat(b.dataset.dist) || 999999;
+    } else {
+      return 0;
+    }
+    return sortDir * (va - vb);
+  });
+  // Re-append in sorted order
+  rows.forEach(r => tbody.appendChild(r));
+  renderPage(rows);
+}
+
+function sortTable(col) {
+  if (sortCol === col) { sortDir *= -1; } else { sortCol = col; sortDir = 1; }
+  document.querySelectorAll('.prop-table th').forEach((th, i) => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (i === col) th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+  });
+  currentPage = 1;
+  applyFilters();
+}
+
+function toggleFilter(type) {
+  filterState[type] = !filterState[type];
+  document.getElementById(type === 'suv' ? 'btnSuv' : 'btnKm').classList.toggle('active', filterState[type]);
+  currentPage = 1;
+  applyFilters();
+}
+
+function resetFilters() {
+  document.getElementById('maxPrecio').value = '';
+  document.getElementById('maxDist').value = '';
+  filterState = { suv: false, km: false };
+  document.getElementById('btnSuv').classList.remove('active');
+  document.getElementById('btnKm').classList.remove('active');
+  currentPage = 1;
+  applyFilters();
+}
+
+// Input listeners
+document.getElementById('maxPrecio').addEventListener('input', () => { currentPage = 1; applyFilters(); });
+document.getElementById('maxDist').addEventListener('input', () => { currentPage = 1; applyFilters(); });
+
+// Initial render sorted by distance
+sortTable(3);
+</script>
+</body>
+</html>

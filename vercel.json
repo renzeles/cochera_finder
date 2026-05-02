@@ -1,0 +1,7 @@
+{
+  "outputDirectory": "output",
+  "buildCommand": null,
+  "rewrites": [
+    { "source": "/", "destination": "/resultados.html" }
+  ]
+}

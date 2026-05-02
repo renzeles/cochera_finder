@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cocheras en Alquiler — Las Cañitas / Belgrano</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #1a1a2e;
+    --accent: #e94560;
+    --green: #00b894;
+    --orange: #fdcb6e;
+    --bg: #f0f2f5;
+    --card: #ffffff;
+    --text: #2d3436;
+    --muted: #636e72;
+    --border: #e0e0e0;
+  }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+
+  /* ── HEADER ── */
+  .header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+    padding: 40px 48px 32px;
+    color: #fff;
+  }
+  .header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; }
+  .header h1 span { color: #e94560; }
+  .header p { margin-top: 6px; color: rgba(255,255,255,.6); font-size: .9rem; }
+  .header-ref { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+    background: rgba(255,255,255,.1); border-radius: 20px; padding: 5px 14px;
+    font-size: .82rem; color: rgba(255,255,255,.85); }
+  .header-ref svg { width: 14px; height: 14px; fill: #e94560; }
+
+  /* ── STATS ── */
+  .stats { display: flex; gap: 16px; padding: 24px 48px; flex-wrap: wrap; }
+  .stat {
+    background: var(--card); border-radius: 16px; padding: 20px 28px;
+    flex: 1; min-width: 160px; box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  }
+  .stat-num { font-size: 2rem; font-weight: 700; line-height: 1; }
+  .stat-label { font-size: .78rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+  .stat.green .stat-num { color: var(--green); }
+  .stat.red .stat-num { color: var(--accent); }
+  .stat.gold .stat-num { color: #f39c12; }
+
+  /* ── MAP ── */
+  .map-wrap { padding: 0 48px 24px; }
+  #map { height: 380px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,.1); }
+
+  /* ── FILTERS ── */
+  .filters {
+    margin: 0 48px 20px; background: var(--card);
+    border-radius: 16px; padding: 20px 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-end;
+  }
+  .filter-group { display: flex; flex-direction: column; gap: 6px; }
+  .filter-group label { font-size: .75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .filter-group input[type="number"] {
+    border: 1.5px solid var(--border); border-radius: 10px; padding: 8px 12px;
+    font-size: .9rem; font-family: inherit; width: 150px;
+    transition: border-color .2s;
+  }
+  .filter-group input[type="number"]:focus { outline: none; border-color: var(--accent); }
+  .toggle-group { display: flex; gap: 10px; }
+  .toggle-btn {
+    border: 1.5px solid var(--border); background: #fff; border-radius: 10px;
+    padding: 8px 16px; font-size: .83rem; font-weight: 500; cursor: pointer;
+    transition: all .2s; font-family: inherit; color: var(--text);
+  }
+  .toggle-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .reset-btn {
+    border: none; background: none; color: var(--muted); font-size: .83rem;
+    cursor: pointer; padding: 8px 4px; font-family: inherit; text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .reset-btn:hover { color: var(--accent); }
+
+  /* ── TABLE WRAP ── */
+  .table-wrap { margin: 0 48px 48px; }
+  .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .result-count { font-size: .85rem; color: var(--muted); }
+  .result-count strong { color: var(--text); }
+
+  /* ── TABLE ── */
+  .prop-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+  .prop-table thead th {
+    padding: 0 16px 8px; text-align: left;
+    font-size: .72rem; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .6px;
+    cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  .prop-table thead th:hover { color: var(--text); }
+  .prop-table thead th .sort-icon { margin-left: 4px; opacity: .4; }
+  .prop-table thead th.sort-asc .sort-icon::after { content: ' ▲'; }
+  .prop-table thead th.sort-desc .sort-icon::after { content: ' ▼'; }
+
+  .prop-row {
+    background: var(--card);
+    box-shadow: 0 1px 6px rgba(0,0,0,.05);
+    border-radius: 14px;
+    transition: box-shadow .2s, transform .15s;
+    cursor: pointer;
+  }
+  .prop-row:hover { box-shadow: 0 4px 20px rgba(0,0,0,.12); transform: translateY(-1px); }
+  .prop-row td { padding: 16px; vertical-align: middle; }
+  .prop-row td:first-child { border-radius: 14px 0 0 14px; }
+  .prop-row td:last-child { border-radius: 0 14px 14px 0; }
+
+  /* Portal badge */
+  .badge-portal {
+    display: inline-block; padding: 3px 10px; border-radius: 8px;
+    font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .4px;
+  }
+  .badge-zonaprop   { background: #e3f0ff; color: #1565c0; }
+  .badge-argenprop  { background: #fff3e0; color: #e65100; }
+  .badge-mercadolibre { background: #fffde7; color: #f57f17; }
+  .badge-properati  { background: #f3e5f5; color: #6a1b9a; }
+
+  /* Title cell */
+  .prop-title a {
+    color: var(--text); text-decoration: none; font-weight: 500;
+    font-size: .9rem; line-height: 1.4; display: block;
+    transition: color .15s;
+  }
+  .prop-title a:hover { color: var(--accent); }
+  .prop-addr { color: var(--muted); font-size: .78rem; margin-top: 3px; }
+
+  /* Price cell */
+  .prop-price { font-size: 1.05rem; font-weight: 700; color: var(--green); white-space: nowrap; }
+  .prop-price.usd { color: #0984e3; }
+
+  /* Distance badge */
+  .dist-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: 20px; font-size: .8rem; font-weight: 600;
+    white-space: nowrap;
+  }
+  .dist-pill.near { background: #d4edda; color: #155724; }
+  .dist-pill.mid  { background: #fff3cd; color: #856404; }
+  .dist-pill.far  { background: #f8d7da; color: #721c24; }
+  .dist-pill.unknown { background: #e9ecef; color: #6c757d; }
+
+  /* SUV badge */
+  .badge-suv {
+    display: inline-block; padding: 3px 8px; border-radius: 6px;
+    background: #d4edda; color: #155724; font-size: .7rem; font-weight: 700;
+  }
+
+  /* Pagination */
+  .pagination { display: flex; gap: 8px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+  .page-btn {
+    border: 1.5px solid var(--border); background: #fff; border-radius: 10px;
+    padding: 7px 14px; font-size: .85rem; cursor: pointer; font-family: inherit;
+    transition: all .2s;
+  }
+  .page-btn:hover, .page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .page-btn:disabled { opacity: .4; cursor: default; }
+
+  /* No results */
+  .no-results { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .no-results h3 { font-size: 1.2rem; margin-bottom: 8px; color: var(--text); }
+
+  @media (max-width: 768px) {
+    .header, .stats, .map-wrap, .filters, .table-wrap { padding-left: 16px; padding-right: 16px; }
+    .stats { gap: 12px; }
+    .stat { min-width: 120px; padding: 14px 18px; }
+    .stat-num { font-size: 1.5rem; }
+    .prop-table thead { display: none; }
+    .prop-row td { display: block; padding: 8px 16px; }
+    .prop-row td:first-child { padding-top: 16px; }
+    .prop-row td:last-child { padding-bottom: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <h1>Cocheras en <span>Alquiler</span></h1>
+  <p>Belgrano · Las Cañitas · Palermo — resultados en tiempo real de 4 portales</p>
+  <div class="header-ref">
+    <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+    Luis María Campos y Teodoro García, Las Cañitas
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat">
+    <div class="stat-num">{{ total }}</div>
+    <div class="stat-label">Cocheras encontradas</div>
+  </div>
+  <div class="stat green">
+    <div class="stat-num">{{ dentro_1km }}</div>
+    <div class="stat-label">Dentro de 1 km</div>
+  </div>
+  <div class="stat gold">
+    <div class="stat-num">{{ listings | selectattr('apto_suv') | list | length }}</div>
+    <div class="stat-label">Aptas para SUV</div>
+  </div>
+  <div class="stat red">
+    <div class="stat-num">4</div>
+    <div class="stat-label">Portales consultados</div>
+  </div>
+</div>
+
+<!-- MAP -->
+<div class="map-wrap">
+  <div id="map"></div>
+</div>
+
+<!-- FILTERS -->
+<div class="filters">
+  <div class="filter-group">
+    <label>Precio máximo (ARS)</label>
+    <input type="number" id="maxPrecio" placeholder="Sin límite" step="10000">
+  </div>
+  <div class="filter-group">
+    <label>Distancia máxima (metros)</label>
+    <input type="number" id="maxDist" placeholder="Ej: 800" step="100">
+  </div>
+  <div class="filter-group">
+    <label>Filtros rápidos</label>
+    <div class="toggle-group">
+      <button class="toggle-btn" id="btnSuv" onclick="toggleFilter('suv')">Solo SUV</button>
+      <button class="toggle-btn" id="btnKm" onclick="toggleFilter('km')">Solo &lt;1 km</button>
+    </div>
+  </div>
+  <button class="reset-btn" onclick="resetFilters()">Limpiar filtros</button>
+</div>
+
+<!-- TABLE -->
+<div class="table-wrap">
+  <div class="table-header">
+    <div class="result-count">Mostrando <strong id="countVisible">{{ total }}</strong> cocheras</div>
+  </div>
+  <table class="prop-table" id="tabla">
+    <thead>
+      <tr>
+        <th onclick="sortTable(0)" data-col="0">Portal <span class="sort-icon"></span></th>
+        <th onclick="sortTable(1)" data-col="1">Propiedad <span class="sort-icon"></span></th>
+        <th onclick="sortTable(2)" data-col="2">Precio <span class="sort-icon"></span></th>
+        <th onclick="sortTable(3)" data-col="3">Distancia <span class="sort-icon"></span></th>
+        <th>SUV</th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+      {% for l in listings %}
+      <tr class="prop-row"
+          data-precio="{{ l.precio_num or '' }}"
+          data-dist="{{ l.distancia_m or '' }}"
+          data-suv="{{ 'si' if l.apto_suv else 'no' }}"
+          onclick="window.open('{{ l.url }}', '_blank')">
+        <td>
+          <span class="badge-portal badge-{{ l.fuente | lower | replace(' ', '') }}">{{ l.fuente }}</span>
+        </td>
+        <td class="prop-title">
+          <a href="{{ l.url }}" target="_blank" onclick="event.stopPropagation()">
+            {{ l.titulo or 'Ver aviso' }}
+          </a>
+          <div class="prop-addr">{{ l.direccion }}</div>
+        </td>
+        <td>
+          <div class="prop-price {% if 'USD' in l.precio or 'usd' in l.precio %}usd{% endif %}">
+            {{ l.precio or '—' }}
+          </div>
+        </td>
+        <td>
+          {% if l.distancia_m is not none %}
+            {% if l.distancia_m <= 500 %}
+              <span class="dist-pill near">📍 {{ l.distancia_m }} m</span>
+            {% elif l.distancia_m <= 1000 %}
+              <span class="dist-pill mid">📍 {{ l.distancia_m }} m</span>
+            {% else %}
+              <span class="dist-pill far">📍 {{ l.distancia_m }} m</span>
+            {% endif %}
+          {% else %}
+            <span class="dist-pill unknown">— m</span>
+          {% endif %}
+        </td>
+        <td>{% if l.apto_suv %}<span class="badge-suv">SUV</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div id="noResults" class="no-results" style="display:none">
+    <h3>Sin resultados</h3>
+    <p>Probá ajustando los filtros.</p>
+  </div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const REF_LAT = {{ ref_lat }};
+const REF_LON = {{ ref_lon }};
+const MARKERS = {{ markers_json }};
+const PAGE_SIZE = 30;
+
+// ── MAP ──
+const map = L.map('map').setView([REF_LAT, REF_LON], 15);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+L.circle([REF_LAT, REF_LON], {radius: 1000, color: '#1a1a2e', fillOpacity: 0.04, weight: 1.5, dashArray:'6 4'}).addTo(map);
+
+const refIcon = L.divIcon({className:'', html:`<div style="width:22px;height:22px;border-radius:50%;background:#e94560;border:3px solid #fff;box-shadow:0 2px 8px rgba(233,69,96,.5)"></div>`});
+L.marker([REF_LAT, REF_LON], {icon: refIcon}).addTo(map)
+  .bindPopup('<strong style="color:#e94560">📍 Tu referencia</strong><br>Luis María Campos y Teodoro García');
+
+const makeIcon = (dist) => {
+  const color = dist <= 500 ? '#00b894' : dist <= 1000 ? '#fdcb6e' : '#d63031';
+  return L.divIcon({className:'', html:`<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>`});
+};
+
+MARKERS.forEach(m => {
+  const icon = makeIcon(m.distancia_m || 99999);
+  const suv = m.apto_suv ? '<br><span style="color:#00b894;font-weight:700;font-size:.8em">✓ Apto SUV</span>' : '';
+  const dist = m.distancia_m ? `<br><span style="color:#636e72;font-size:.8em">${m.distancia_m} m del punto de referencia</span>` : '';
+  L.marker([m.lat, m.lon], {icon})
+    .addTo(map)
+    .bindPopup(`
+      <div style="font-family:Inter,sans-serif;min-width:200px">
+        <div style="font-size:.7em;font-weight:700;text-transform:uppercase;color:#636e72;margin-bottom:4px">${m.fuente}</div>
+        <strong><a href="${m.url}" target="_blank" style="color:#1a1a2e;text-decoration:none">${m.titulo || 'Ver aviso'}</a></strong>
+        <div style="font-size:1.1em;font-weight:700;color:#00b894;margin-top:4px">${m.precio}</div>
+        ${dist}${suv}
+      </div>
+    `);
+});
+
+// ── FILTERING & SORTING ──
+const tbody = document.getElementById('tbody');
+let allRows = Array.from(tbody.querySelectorAll('tr.prop-row'));
+let currentPage = 1;
+let sortCol = 3, sortDir = 1;
+let filterState = { suv: false, km: false };
+
+function getRows() {
+  const maxP = parseFloat(document.getElementById('maxPrecio').value) || Infinity;
+  const maxD = parseFloat(document.getElementById('maxDist').value) || Infinity;
+
+  return allRows.filter(row => {
+    const precio = parseFloat(row.dataset.precio) || 0;
+    const dist   = parseFloat(row.dataset.dist) || Infinity;
+    const suv    = row.dataset.suv === 'si';
+    if (maxP < Infinity && precio > maxP && precio > 0) return false;
+    if (maxD < Infinity && dist > maxD) return false;
+    if (filterState.suv && !suv) return false;
+    if (filterState.km && dist > 1000) return false;
+    return true;
+  });
+}
+
+function renderPage(rows) {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const visible = rows.slice(start, start + PAGE_SIZE);
+  allRows.forEach(r => r.style.display = 'none');
+  visible.forEach(r => r.style.display = '');
+  document.getElementById('countVisible').textContent = rows.length;
+  document.getElementById('noResults').style.display = rows.length === 0 ? 'block' : 'none';
+  renderPagination(rows.length);
+}
+
+function renderPagination(total) {
+  const pages = Math.ceil(total / PAGE_SIZE);
+  const pag = document.getElementById('pagination');
+  pag.innerHTML = '';
+  if (pages <= 1) return;
+  for (let i = 1; i <= pages; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+    btn.textContent = i;
+    btn.onclick = () => { currentPage = i; applyFilters(); };
+    pag.appendChild(btn);
+  }
+}
+
+function applyFilters() {
+  const rows = getRows();
+  rows.sort((a, b) => {
+    let va, vb;
+    if (sortCol === 2) {
+      va = parseFloat(a.dataset.precio) || 999999999;
+      vb = parseFloat(b.dataset.precio) || 999999999;
+    } else if (sortCol === 3) {
+      va = parseFloat(a.dataset.dist) || 999999;
+      vb = parseFloat(b.dataset.dist) || 999999;
+    } else {
+      return 0;
+    }
+    return sortDir * (va - vb);
+  });
+  // Re-append in sorted order
+  rows.forEach(r => tbody.appendChild(r));
+  renderPage(rows);
+}
+
+function sortTable(col) {
+  if (sortCol === col) { sortDir *= -1; } else { sortCol = col; sortDir = 1; }
+  document.querySelectorAll('.prop-table th').forEach((th, i) => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (i === col) th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+  });
+  currentPage = 1;
+  applyFilters();
+}
+
+function toggleFilter(type) {
+  filterState[type] = !filterState[type];
+  document.getElementById(type === 'suv' ? 'btnSuv' : 'btnKm').classList.toggle('active', filterState[type]);
+  currentPage = 1;
+  applyFilters();
+}
+
+function resetFilters() {
+  document.getElementById('maxPrecio').value = '';
+  document.getElementById('maxDist').value = '';
+  filterState = { suv: false, km: false };
+  document.getElementById('btnSuv').classList.remove('active');
+  document.getElementById('btnKm').classList.remove('active');
+  currentPage = 1;
+  applyFilters();
+}
+
+// Input listeners
+document.getElementById('maxPrecio').addEventListener('input', () => { currentPage = 1; applyFilters(); });
+document.getElementById('maxDist').addEventListener('input', () => { currentPage = 1; applyFilters(); });
+
+// Initial render sorted by distance
+sortTable(3);
+</script>
+</body>
+</html>
